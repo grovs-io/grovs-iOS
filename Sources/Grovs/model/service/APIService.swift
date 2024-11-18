@@ -105,12 +105,13 @@ class APIService: BaseService {
 
         DebugLogger.shared.log(.info, "Fetching payload for device and URL")
         makeRequest(URLRequest: request) { success, json in
-            guard let json = json, success, let data = json["data"] as? [String: Any] else {
+            guard let json = json, success else {
                 DebugLogger.shared.log(.info, "Fetching payload for device and URL - No payload")
                 completion(nil, nil)
                 return
             }
 
+            let data = json["data"] as? [String: Any]
             let link = json["link"] as? String
 
             DebugLogger.shared.log(.info, "Fetching payload for device and URL - Received payload")
@@ -131,12 +132,13 @@ class APIService: BaseService {
 
         DebugLogger.shared.log(.info, "Fetching payload for device")
         makeRequest(URLRequest: request) { success, json in
-            guard let json = json, success, let data = json["data"] as? [String: Any] else {
+            guard let json = json, success else {
                 DebugLogger.shared.log(.info, "Fetching payload for device - No payload")
                 completion(nil, nil)
                 return
             }
 
+            let data = json["data"] as? [String: Any]
             let link = json["link"] as? String
 
             DebugLogger.shared.log(.info, "Fetching payload for device - Received payload")

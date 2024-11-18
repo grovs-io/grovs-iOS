@@ -24,6 +24,15 @@ class EventsHandler {
     private let service: APIService
     private let storage = EventsStorage()
     private var linkForFutureActions: String?
+    private var sendingEvents = false
+    private var hasFetchedPayloadLink = false
+    private var startupTime: Date!
+
+    var handledAppOrSceneDelegates = false {
+        didSet {
+            handleEventsIfNeeded()
+        }
+    }
 
     // MARK: Initialization
 
@@ -33,6 +42,7 @@ class EventsHandler {
         service = apiService
 
         // Set up observers and initial events
+        startupTime = Date()
         addObservers()
         addInitialEvents()
         addOpenEvent()
@@ -48,16 +58,21 @@ class EventsHandler {
             newEvent.link = linkForFutureActions
         }
 
-        storage.addEvent(event: newEvent)
-        sendNormalEventsToBackend()
+        storage.addEvent(event: newEvent) { [weak self] in
+            self?.handleEventsIfNeeded()
+        }
     }
 
     /// Sets the link for future actions to associate with new events.
     /// - Parameter link: The link to set
     func setLinkToNewFutureActions(link: String?) {
         linkForFutureActions = link
+        hasFetchedPayloadLink = true
+
         if let link {
             addLinkToEvents(link: link)
+        } else {
+            handleEventsIfNeeded()
         }
     }
 
@@ -65,15 +80,15 @@ class EventsHandler {
 
     /// Called when the application becomes active.
     @objc func applicationDidBecomeActive() {
-        initialDispatchEvents()
-
         let lastResignTimestamp = UserDefaultsHelper.getInt(key: .grovsResignTimestamp)
         if lastResignTimestamp != 0 {
-            handleOldEvents(timestamp: Date.fromSeconds(lastResignTimestamp))
+            handleOldEngagementEvents(timestamp: Date.fromSeconds(lastResignTimestamp))
         } else {
             // Add a time-spent event if there is no last resign timestamp
-            let event = Event(type: .timeSpent, createdAt: Date())
-            storage.addEvent(event: event)
+            let event = Event(type: .timeSpent, createdAt: Date(), link: linkForFutureActions)
+            storage.addEvent(event: event) {
+                // Do nothing
+            }
         }
     }
 
@@ -83,13 +98,6 @@ class EventsHandler {
     }
 
     // MARK: Private Methods
-
-    /// Dispatches initial events after a delay.
-    private func initialDispatchEvents() {
-        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + Constants.firstBatchEventsSendingLeeway, execute: { [weak self] in
-            self?.sendNormalEventsToBackend()
-        })
-    }
 
     /// Adds initial events such as install or reactivation events.
     private func addInitialEvents() {
@@ -107,8 +115,10 @@ class EventsHandler {
 
         if numberOfOpens == 0 {
             // Log an install event if it's the first open
-            let event = linksquaredID != nil ? Event(type: .reinstall, createdAt: Date()) : Event(type: .install, createdAt: Date())
-            storage.addEvent(event: event)
+            let event = linksquaredID != nil ? Event(type: .reinstall, createdAt: Date(), link: linkForFutureActions) : Event(type: .install, createdAt: Date(), link: linkForFutureActions)
+            storage.addOrReplaceEvents(events: [event]) {
+                // Do nothing
+            }
         }
     }
 
@@ -120,8 +130,10 @@ class EventsHandler {
 
             if let days = lastResignDate.daysBetween(Date()), days >= Constants.numberOfDaysForReactivation {
 
-                let event = Event(type: .reactivation, createdAt: Date())
-                storage.addEvent(event: event)
+                let event = Event(type: .reactivation, createdAt: Date(), link: linkForFutureActions)
+                storage.addEvent(event: event) {
+                    // Do nothing
+                }
             }
         }
 
@@ -131,8 +143,10 @@ class EventsHandler {
     /// Logs an app open event.
     private func addOpenEvent() {
         // Log an app open event
-        let event = Event(type: .appOpen, createdAt: Date())
-        storage.addEvent(event: event)
+        let event = Event(type: .appOpen, createdAt: Date(), link: linkForFutureActions)
+        storage.addEvent(event: event) {
+            // Do nothing
+        }
     }
 
     /// Sets up observers for application lifecycle notifications.
@@ -151,9 +165,9 @@ class EventsHandler {
 
     /// Handles old events that occurred before the app resigned active.
     /// - Parameter timestamp: The timestamp of when the app last resigned active
-    private func handleOldEvents(timestamp: Date) {
+    private func handleOldEngagementEvents(timestamp: Date) {
         // Handle events that occurred before the app resigned active
-        let event = Event(type: .timeSpent, createdAt: Date())
+        let event = Event(type: .timeSpent, createdAt: Date(), link: linkForFutureActions)
 
         // Store the correct duration of events
         changeStorageEvents { oldEvent in
@@ -168,7 +182,9 @@ class EventsHandler {
         } completion: {
             // Send the time-spent events to the backend and add the new event
             self.sendTimeSpentEventsToBackend()
-            self.storage.addEvent(event: event)
+            self.storage.addEvent(event: event) {
+                // Do nothing
+            }
         }
     }
 
@@ -178,13 +194,13 @@ class EventsHandler {
         // Add a link to the stored events
         changeStorageEvents { oldEvent in
             let newEvent = oldEvent
-            if newEvent.link == nil {
+            if newEvent.link == nil && newEvent.createdAt >= self.startupTime {
                 newEvent.link = link
             }
             return newEvent
         } completion: {
             // Send the updated events to the backend
-            self.sendNormalEventsToBackend()
+            self.handleEventsIfNeeded()
         }
     }
 
@@ -202,15 +218,23 @@ class EventsHandler {
                     newEvents.append(newEvent)
                 }
 
-                self.storage.addOrReplaceEvents(events: newEvents)
-
-                completion?()
+                self.storage.addOrReplaceEvents(events: newEvents) {
+                    DispatchQueue.main.async {
+                        completion?()
+                    }
+                }
             }
         }
     }
 
     /// Sends normal events (non-time-spent) to the backend.
     private func sendNormalEventsToBackend() {
+        if sendingEvents {
+            return
+        }
+
+        sendingEvents = true
+
         // Send normal events to the backend
         storage.getEvents { events in
             guard let events = events else {
@@ -223,18 +247,21 @@ class EventsHandler {
             for event in events {
                 if event.type != .timeSpent {
                     group.enter()
-
+                    
                     self.service.addEvent(event: event) { value in
                         if value {
-                            self.storage.removeEvent(event: event)
+                            self.storage.removeEvent(event: event) {
+                                group.leave()
+                            }
+                        } else {
+                            group.leave()
                         }
-
-                        group.leave()
                     }
                 }
             }
 
             group.wait()
+            self.sendingEvents = false
         }
     }
 
@@ -252,18 +279,26 @@ class EventsHandler {
             for event in events {
                 if event.type == .timeSpent {
                     group.enter()
-
                     self.service.addEvent(event: event) { value in
                         if value {
-                            self.storage.removeEvent(event: event)
+                            self.storage.removeEvent(event: event) {
+                                group.leave()
+                            }
+                        } else {
+                            group.leave()
                         }
-
-                        group.leave()
                     }
                 }
             }
 
             group.wait()
+        }
+    }
+
+    /// Send events to backend if needed
+    private func handleEventsIfNeeded() {
+        if handledAppOrSceneDelegates && hasFetchedPayloadLink {
+            sendNormalEventsToBackend()
         }
     }
 }

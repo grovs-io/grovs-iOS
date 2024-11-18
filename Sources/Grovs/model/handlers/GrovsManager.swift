@@ -46,7 +46,11 @@ class GrovsManager {
     private var receivedPayloads = [[String: Any]]()
 
     /// Stores weather the app or scene delegates were called
-    private var handledAppOrSceneDelegates = false
+    private var handledAppOrSceneDelegates = false {
+        didSet {
+            self.eventsHandler.handledAppOrSceneDelegates = handledAppOrSceneDelegates
+        }
+    }
 
     /// Closures to be called for the last payload
     private var lastPayloadClosureArray = [GrovsPayloadClosure]()
@@ -365,7 +369,6 @@ class GrovsManager {
             return
         }
 
-        eventsHandler.setLinkToNewFutureActions(link: url)
         self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails(), url: url) { payload, link in
             self.eventsHandler.setLinkToNewFutureActions(link: link)
             self.handleReceivedAction(payload: payload)
@@ -473,22 +476,21 @@ extension GrovsManager {
 
     func handleAppDelegate(continue userActivity: NSUserActivity,
                            restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        defer {
-            handledAppOrSceneDelegates = true
-        }
 
         if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
            let url = userActivity.webpageURL {
             handleURL(url: url.absoluteString)
+            handledAppOrSceneDelegates = true
+
             return true
         }
 
+        handledAppOrSceneDelegates = true
         return false
     }
 
     func handleAppDelegate(open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
         handleURL(url: url.absoluteString)
-
         handledAppOrSceneDelegates = true
 
         return true
