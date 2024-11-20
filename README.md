@@ -83,7 +83,6 @@ func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options conn
 If your application doesn't use a scene delegate, you should forward relevant calls from the app delegate to Grovs:
 
 ```swift
-
 // Handle universal link continuation
 func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
     return Grovs.handleAppDelegate(continue: userActivity, restorationHandler: restorationHandler)
@@ -105,7 +104,6 @@ Once configured, you can utilize the various functionalities provided by Grovs.
 You can receive deep link events by conforming to the GrovsDelegate protocol. Here's how you can implement it:
 
 ```swift
-
 class YourViewController: UIViewController, GrovsDelegate {
 
     override func viewDidLoad() {
@@ -124,12 +122,48 @@ class YourViewController: UIViewController, GrovsDelegate {
 ### Generating Links
 
 ```swift
-
 Grovs.generateLink(title: "Link Title", subtitle: "Link Subtitle", imageURL: "imageURL", data: ["key": "value"]) { url in
     // Handle generated URL
 }
 
 ```
+
+### Using messages
+
+IMPORTANT: if console messages have automatic display enabled, they will appear in your app without any additional integration required.
+
+To receive push notifications for the received messages attach the device token to the SDK.
+
+```swift
+func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+    // Convert token to a string
+    let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+    let token = tokenParts.joined()
+
+    print("Device Token: \(token)")
+
+    // You can pass this token to the library
+    Grovs.pushToken = token
+}
+```
+
+To get the number of unread messages, for instance if you want to display an unread number bullet, you can use the following SDK method.
+
+```swift
+Grovs.numberOfUnreadMessages { count in
+    print("Count \(count)")
+}
+```
+
+To display the list of the messages on top of everthing else use:
+
+```swift
+Grovs.displayMessagesViewController {
+    // Display has finished.
+}
+```
+
+
 
 ## Demo project
 
