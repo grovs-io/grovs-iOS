@@ -109,6 +109,7 @@ class GrovsManager {
 
     private let notificationsDisplayDispatchGroup = DispatchGroup()
     private var displayedNotificationsIds = [Int]()
+    private var fetchPayloadInProgress = false
 
     // MARK: - Initialization
 
@@ -347,15 +348,17 @@ class GrovsManager {
     }
 
     private func getDataForDevice() {
-        guard enabled, authenticated else {
+        guard enabled, authenticated, !fetchPayloadInProgress else {
             return
         }
 
+        fetchPayloadInProgress = true
         self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails()) { payload, link in
             self.eventsHandler.setLinkToNewFutureActions(link: link)
 
             self.handleReceivedAction(payload: payload)
             self.displayAutomaticNotificationsIfNeeded()
+            self.fetchPayloadInProgress = false
         }
     }
 

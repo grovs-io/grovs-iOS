@@ -66,13 +66,12 @@ class EventsHandler {
     /// Sets the link for future actions to associate with new events.
     /// - Parameter link: The link to set
     func setLinkToNewFutureActions(link: String?) {
-        linkForFutureActions = link
-        hasFetchedPayloadLink = true
-
         if let link {
-            addLinkToEvents(link: link)
+            self.linkForFutureActions = link
+            self.addLinkToEvents(link: link)
         } else {
-            handleEventsIfNeeded()
+            self.hasFetchedPayloadLink = true
+            self.handleEventsIfNeeded()
         }
     }
 
@@ -191,15 +190,25 @@ class EventsHandler {
     /// Adds a link to all stored events that do not already have one.
     /// - Parameter link: The link to add
     private func addLinkToEvents(link: String) {
+//        print("add link to events")
         // Add a link to the stored events
+//        print("\n\n\n\n\n___Startup time \(link)")
+//        print(self.startupTime)
         changeStorageEvents { oldEvent in
             let newEvent = oldEvent
+//            print("\n____ ")
+//            print(oldEvent.type.rawValue)
+//            print(oldEvent.createdAt)
+//            print(oldEvent.link)
+//            print("link \(link)")
+//            print(newEvent.createdAt >= self.startupTime)
             if newEvent.link == nil && newEvent.createdAt >= self.startupTime {
                 newEvent.link = link
             }
             return newEvent
         } completion: {
             // Send the updated events to the backend
+            self.hasFetchedPayloadLink = true
             self.handleEventsIfNeeded()
         }
     }
