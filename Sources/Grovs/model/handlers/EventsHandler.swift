@@ -66,13 +66,12 @@ class EventsHandler {
     /// Sets the link for future actions to associate with new events.
     /// - Parameter link: The link to set
     func setLinkToNewFutureActions(link: String?) {
-        linkForFutureActions = link
-        hasFetchedPayloadLink = true
-
         if let link {
-            addLinkToEvents(link: link)
+            self.linkForFutureActions = link
+            self.addLinkToEvents(link: link)
         } else {
-            handleEventsIfNeeded()
+            self.hasFetchedPayloadLink = true
+            self.handleEventsIfNeeded()
         }
     }
 
@@ -200,6 +199,7 @@ class EventsHandler {
             return newEvent
         } completion: {
             // Send the updated events to the backend
+            self.hasFetchedPayloadLink = true
             self.handleEventsIfNeeded()
         }
     }
