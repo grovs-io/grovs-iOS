@@ -49,10 +49,13 @@ class APIService: BaseService {
             static let notificationsToDisplayAutomatically = "/notifications_to_display_automatically"
         }
         struct Headers {
+            static let SDKVersion = "1.4"
+
             static let apiKey = "PROJECT-KEY"
             static let identifier = "IDENTIFIER"
             static let platform = "PLATFORM"
             static let linksquaredID = "LINKSQUARED"
+            static let SDKVersionKey = "SDK-VERSION"
         }
     }
 
@@ -399,6 +402,7 @@ class APIService: BaseService {
         request.setValue(bundleID, forHTTPHeaderField: Constants.Headers.identifier)
         request.setValue("ios", forHTTPHeaderField: Constants.Headers.platform)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(Constants.Headers.SDKVersion, forHTTPHeaderField: Constants.Headers.SDKVersionKey)
         if let userAgent = Context.userAgent {
             request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         }

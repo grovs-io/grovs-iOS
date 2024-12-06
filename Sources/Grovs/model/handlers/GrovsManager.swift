@@ -354,11 +354,11 @@ class GrovsManager {
 
         fetchPayloadInProgress = true
         self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails()) { payload, link in
-            self.eventsHandler.setLinkToNewFutureActions(link: link)
-
-            self.handleReceivedAction(payload: payload)
-            self.displayAutomaticNotificationsIfNeeded()
-            self.fetchPayloadInProgress = false
+            self.eventsHandler.setLinkToNewFutureActions(link: link, completion: {
+                self.handleReceivedAction(payload: payload)
+                self.displayAutomaticNotificationsIfNeeded()
+                self.fetchPayloadInProgress = false
+            })
         }
     }
 
@@ -373,7 +373,7 @@ class GrovsManager {
         }
 
         self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails(), url: url) { payload, link in
-            self.eventsHandler.setLinkToNewFutureActions(link: link)
+            self.eventsHandler.setLinkToNewFutureActions(link: link, completion: nil)
             self.handleReceivedAction(payload: payload)
         }
     }

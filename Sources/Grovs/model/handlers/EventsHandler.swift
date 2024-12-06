@@ -30,7 +30,7 @@ class EventsHandler {
 
     var handledAppOrSceneDelegates = false {
         didSet {
-            handleEventsIfNeeded()
+            handleEventsIfNeeded(completion: nil)
         }
     }
 
@@ -43,6 +43,10 @@ class EventsHandler {
 
         // Set up observers and initial events
         startupTime = Date()
+        Timer.scheduledTimer(withTimeInterval: Constants.firstBatchEventsSendingLeeway, repeats: false) { [weak self] _  in
+            self?.handleEventsIfNeeded(completion: nil)
+        }
+
         addObservers()
         addInitialEvents()
         addOpenEvent()
@@ -59,19 +63,19 @@ class EventsHandler {
         }
 
         storage.addEvent(event: newEvent) { [weak self] in
-            self?.handleEventsIfNeeded()
+            self?.handleEventsIfNeeded(completion: nil)
         }
     }
 
     /// Sets the link for future actions to associate with new events.
     /// - Parameter link: The link to set
-    func setLinkToNewFutureActions(link: String?) {
+    func setLinkToNewFutureActions(link: String?, completion: GrovsEmptyClosure?) {
         if let link {
             self.linkForFutureActions = link
-            self.addLinkToEvents(link: link)
+            self.addLinkToEvents(link: link, completion: completion)
         } else {
             self.hasFetchedPayloadLink = true
-            self.handleEventsIfNeeded()
+            self.handleEventsIfNeeded(completion: completion)
         }
     }
 
@@ -189,7 +193,7 @@ class EventsHandler {
 
     /// Adds a link to all stored events that do not already have one.
     /// - Parameter link: The link to add
-    private func addLinkToEvents(link: String) {
+    private func addLinkToEvents(link: String, completion: GrovsEmptyClosure?) {
         // Add a link to the stored events
         changeStorageEvents { oldEvent in
             let newEvent = oldEvent
@@ -200,7 +204,7 @@ class EventsHandler {
         } completion: {
             // Send the updated events to the backend
             self.hasFetchedPayloadLink = true
-            self.handleEventsIfNeeded()
+            self.handleEventsIfNeeded(completion: completion)
         }
     }
 
@@ -228,8 +232,9 @@ class EventsHandler {
     }
 
     /// Sends normal events (non-time-spent) to the backend.
-    private func sendNormalEventsToBackend() {
+    private func sendNormalEventsToBackend(completion: GrovsEmptyClosure?) {
         if sendingEvents {
+            completion?()
             return
         }
 
@@ -238,6 +243,7 @@ class EventsHandler {
         // Send normal events to the backend
         storage.getEvents { events in
             guard let events = events else {
+                completion?()
                 return
             }
 
@@ -262,6 +268,7 @@ class EventsHandler {
 
             group.wait()
             self.sendingEvents = false
+            completion?()
         }
     }
 
@@ -296,9 +303,25 @@ class EventsHandler {
     }
 
     /// Send events to backend if needed
-    private func handleEventsIfNeeded() {
-        if handledAppOrSceneDelegates && hasFetchedPayloadLink {
-            sendNormalEventsToBackend()
+    private func handleEventsIfNeeded(completion: GrovsEmptyClosure?) {
+        if handledAppOrSceneDelegates && hasFetchedPayloadLink && isLeewayPassed() {
+            sendNormalEventsToBackend(completion: completion)
         }
+    }
+
+    /// Checks if the current time is greater than startupTime + leeway
+    ///
+    /// - Returns: `true` if the current time has exceeded the leeway period, else `false`
+    func isLeewayPassed() -> Bool {
+        guard let startupTime = self.startupTime else {
+            // Handle the case where startupTime is not set
+            return false
+        }
+
+        let leewayInterval = Constants.firstBatchEventsSendingLeeway
+        let allowedTime = startupTime.addingTimeInterval(leewayInterval)
+        let currentTime = Date()
+
+        return currentTime > allowedTime
     }
 }

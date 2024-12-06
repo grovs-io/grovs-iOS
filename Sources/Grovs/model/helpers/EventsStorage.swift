@@ -32,7 +32,7 @@ class EventsStorage {
     ///
     /// - Parameter events: The events to add or replace.
     func addOrReplaceEvents(events: [Event], completion: @escaping GrovsEmptyClosure) {
-        serialQueue.sync {
+        serialQueue.async {
             var existingEvents: [Event] = []
 
             if let readEvents = self.dataCache.readArray(forKey: Constants.cachedEvents) as? [Event] {
@@ -61,7 +61,7 @@ class EventsStorage {
     ///
     /// - Parameter event: The event to add.
     func addEvent(event: Event, completion: @escaping GrovsEmptyClosure) {
-        serialQueue.sync {
+        serialQueue.async {
             var events: [Event] = []
 
             if let readEvents = self.dataCache.readArray(forKey: Constants.cachedEvents) as? [Event] {
@@ -83,7 +83,7 @@ class EventsStorage {
     ///
     /// - Parameter event: The event to remove.
     func removeEvent(event: Event, completion: @escaping GrovsEmptyClosure) {
-        serialQueue.sync {
+        serialQueue.async {
             if var readEvents = self.dataCache.readArray(forKey: Constants.cachedEvents) as? [Event] {
                 readEvents.removeAll(where: { $0.createdAt == event.createdAt })
 
