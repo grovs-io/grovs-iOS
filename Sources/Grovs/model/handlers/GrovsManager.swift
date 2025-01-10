@@ -64,13 +64,6 @@ class GrovsManager {
     /// The delegate for the GrovsManager, allowing customization and handling of Grovs events.
     var delegate: GrovsDelegate?
 
-    /// Indicates if the test environment should be used
-    var useTestEnvironment = false {
-        didSet {
-            apiService.useTestEnvironment = useTestEnvironment
-        }
-    }
-
     /// The identifier for the current user, normally a userID. This will be visible in the Grovs dashboard.
     var identifier: String? {
         set {
@@ -109,7 +102,6 @@ class GrovsManager {
 
     private let notificationsDisplayDispatchGroup = DispatchGroup()
     private var displayedNotificationsIds = [Int]()
-    private var fetchPayloadInProgress = false
 
     // MARK: - Initialization
 
@@ -117,12 +109,13 @@ class GrovsManager {
     ///
     /// - Parameters:
     ///   - apiKey: The API key for authentication with the Grovs backend.
+    ///   - useTestEnvironment: If the test environment should be used
     ///   - delegate: The delegate for the GrovsManager.
-    init(apiKey: String, delegate: GrovsDelegate?) {
+    init(apiKey: String, useTestEnvironment: Bool, delegate: GrovsDelegate?) {
         self.apiKey = apiKey
         self.bundleID = AppDetailsHelper.getBundleID()
         self.delegate = delegate
-        self.apiService = APIService(apiKey: apiKey, bundleID: self.bundleID)
+        self.apiService = APIService(apiKey: apiKey, bundleID: self.bundleID, useTestEnvironment: useTestEnvironment)
         self.eventsHandler = EventsHandler(apiService: self.apiService)
 
         addObservers()
@@ -318,15 +311,17 @@ class GrovsManager {
             return
         }
 
-        payloadsClosureArray.forEach { closure in
-            closure(receivedPayloads)
-        }
-        payloadsClosureArray.removeAll()
+        DispatchQueue.main.async {
+            self.payloadsClosureArray.forEach { closure in
+                closure(self.receivedPayloads)
+            }
+            self.payloadsClosureArray.removeAll()
 
-        lastPayloadClosureArray.forEach { closure in
-            closure(receivedPayloads.last)
+            self.lastPayloadClosureArray.forEach { closure in
+                closure(self.receivedPayloads.last)
+            }
+            self.lastPayloadClosureArray.removeAll()
         }
-        lastPayloadClosureArray.removeAll()
     }
 
     private func handleURLIfNeeded() {
@@ -348,17 +343,16 @@ class GrovsManager {
     }
 
     private func getDataForDevice() {
-        guard enabled, authenticated, !fetchPayloadInProgress else {
+        guard enabled, authenticated else {
             return
         }
 
-        fetchPayloadInProgress = true
         self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails()) { payload, link in
             self.eventsHandler.setLinkToNewFutureActions(link: link, completion: {
-                self.handleReceivedAction(payload: payload)
                 self.displayAutomaticNotificationsIfNeeded()
-                self.fetchPayloadInProgress = false
             })
+
+            self.handleReceivedAction(payload: payload)
         }
     }
 
@@ -382,7 +376,9 @@ class GrovsManager {
         if let payload = payload {
             receivedPayloads.append(payload)
 
-            delegate?.grovsReceivedPayloadFromDeeplink(payload: payload)
+            DispatchQueue.main.async { [weak self] in
+                self?.delegate?.grovsReceivedPayloadFromDeeplink(payload: payload)
+            }
         }
 
         handlePayloadsReceivedIfNeeded()

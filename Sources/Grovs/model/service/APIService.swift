@@ -74,7 +74,7 @@ class APIService: BaseService {
     }
 
     /// Indicates if the test environment should be used
-    var useTestEnvironment = false
+    private var useTestEnvironment = false
 
     // MARK: - Lifecycle
 
@@ -83,9 +83,10 @@ class APIService: BaseService {
     /// - Parameters:
     ///   - apiKey: The API key for authentication.
     ///   - bundleID: The bundle ID of the app.
-    init(apiKey: String, bundleID: String) {
+    init(apiKey: String, bundleID: String, useTestEnvironment: Bool) {
         self.apiKey = apiKey
         self.bundleID = bundleID
+        self.useTestEnvironment = useTestEnvironment
     }
 
     // MARK: - Public Methods

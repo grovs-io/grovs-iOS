@@ -44,7 +44,7 @@ import Grovs
 ```swift
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
 
-        Grovs.configure(APIKey: "your-api-key", delegate: yourDelegate)
+        Grovs.configure(APIKey: "your-api-key", useTestEnvironment: false, delegate: yourDelegate)
 
         # Optionally, you can adjust the debug level for logging:
 

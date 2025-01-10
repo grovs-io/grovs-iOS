@@ -110,7 +110,7 @@ class MessageDetailsViewController: UIViewController, WKNavigationDelegate, WKUI
                  for navigationAction: WKNavigationAction,
                  windowFeatures: WKWindowFeatures) -> WKWebView? {
         if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
-            UIApplication.shared.openURL(url)
+            UIApplication.shared.open(url)
         }
         
         return nil

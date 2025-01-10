@@ -25,24 +25,11 @@ public class Grovs {
         }
     }
 
-    public static var useTestEnvironment: Bool = false {
-        didSet {
-            manager?.useTestEnvironment = useTestEnvironment
-            checkConfiguration()
-
-            if useTestEnvironment {
-                DebugLogger.shared.log(.info, "Test environment enabled.")
-            }
-        }
-    }
-
     /// The API key used for linking the SDK to your account.
     private static var APIKey: String!
 
     /// The manager handling Grovs functionality.
     private static var manager: GrovsManager?
-
-    private static var isConfigured: Bool = false
 
     // MARK: Public methods
 
@@ -50,10 +37,15 @@ public class Grovs {
     ///
     /// - Parameters:
     ///   - APIKey: The API key obtained from the web console at https://grovs.io.
+    ///   - useTestEnvironment: If this is enabled the test environment will be used.
     ///   - delegate: The delegate to receive payload from the SDK.
-    public static func configure(APIKey: String, delegate: GrovsDelegate?) {
+    public static func configure(APIKey: String, useTestEnvironment: Bool, delegate: GrovsDelegate?) {
         self.APIKey = APIKey
-        self.manager = GrovsManager(apiKey: APIKey, delegate: delegate)
+        self.manager = GrovsManager(apiKey: APIKey, useTestEnvironment: useTestEnvironment, delegate: delegate)
+
+        if useTestEnvironment {
+            DebugLogger.shared.log(.info, "Test environment enabled.")
+        }
 
         self.checkConfiguration()
     }
