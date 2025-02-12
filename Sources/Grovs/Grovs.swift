@@ -245,3 +245,30 @@ extension Grovs {
         manager?.getNumberOfUnreadNotifications(completion: completion) // Calls the manager to fetch unread notifications.
     }
 }
+
+extension Grovs {
+    /// Logs an IAP event and sends it to the backend. This is usefull for prucahses made via Apples' IAP
+    /// - Parameter event: The event to log
+    public static func logInAppPurchase(transactionID: UInt64, completion: @escaping GrovsBoolCompletion) {
+        manager?.logInAppPurchase(transactionID: transactionID, completion: completion)
+    }
+
+    /// Logs a custom purchase transaction and sends it to the backend. This is usefull for transactions that are not handled by Apple IAP
+    ///
+    /// - Parameters:
+    ///   - type: The type of transaction (e.g., buy, cancel).
+    ///   - priceInCents: The price of the transaction in cents.
+    ///   - currency: The currency of the transaction (e.g., "USD").
+    ///   - productID: An optional product identifier.
+    ///   - startDate: An optional start date for the transaction. Defaults to the current date if not provided.
+    ///   - completion: A closure that gets called once the transaction is processed.
+    public static func logCustomPurchase(type: TransactionType,
+                                         priceInCents: Int,
+                                         currency: String,
+                                         productID: String? = nil,
+                                         startDate: Date? = nil,
+                                         completion: @escaping GrovsBoolCompletion) {
+
+        manager?.logCustomPurchase(type: type, priceInCents: priceInCents, currency: currency, productID: productID, startDate: startDate, completion: completion)
+    }
+}

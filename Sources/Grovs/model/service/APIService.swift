@@ -47,6 +47,7 @@ class APIService: BaseService {
             static let numberOfUnreadNotifications = "/number_of_unread_notifications"
             static let markNotificationAsRead = "/mark_notification_as_read"
             static let notificationsToDisplayAutomatically = "/notifications_to_display_automatically"
+            static let addPaymentEvent = "/add_payment_event"
         }
         struct Headers {
             static let SDKVersion = "1.4"
@@ -223,15 +224,15 @@ class APIService: BaseService {
         request.httpMethod = "POST"
         request.httpBody = event.toBackend().dictToData()
 
-        DebugLogger.shared.log(.info, "Add event")
+        DebugLogger.shared.log(.info, "Add event - \(event.type.rawValue)")
         makeRequest(URLRequest: request) { success, json in
             guard json != nil, success else {
-                DebugLogger.shared.log(.info, "Add event - Failed")
+                DebugLogger.shared.log(.info, "Add event - Failed - \(event.type.rawValue)")
                 completion(false)
                 return
             }
 
-            DebugLogger.shared.log(.info, "Add event - Successful")
+            DebugLogger.shared.log(.info, "Add event - Successful - \(event.type.rawValue)")
             completion(true)
         }
     }
@@ -375,6 +376,24 @@ class APIService: BaseService {
                 DebugLogger.shared.log(.info, "Notifications to display automatically - Failed")
                 completion(nil)
             }
+        }
+    }
+
+    func addPaymentEvent(transactionData: TransactionData, completion: @escaping GrovsBoolCompletion) {
+        var request = urlRequestWithAuthHeaders(path: Constants.URLs.addPaymentEvent)
+        request.httpMethod = "POST"
+        request.httpBody = transactionData.toData().dictToData()
+
+        DebugLogger.shared.log(.info, "Add payment event")
+        makeRequest(URLRequest: request) { success, json in
+            guard success else {
+                DebugLogger.shared.log(.info, "Add payment event - Failed")
+                completion(false)
+                return
+            }
+
+            DebugLogger.shared.log(.info, "Add payment event - Success")
+            completion(true)
         }
     }
 

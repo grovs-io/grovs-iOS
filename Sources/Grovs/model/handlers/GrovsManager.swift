@@ -8,7 +8,7 @@ import Foundation
 import UIKit
 
 /// A closure used for completion handlers returning boolean values.
-typealias GrovsBoolCompletion = (_ value: Bool) -> Void
+public typealias GrovsBoolCompletion = (_ value: Bool) -> Void
 
 /// A manager class responsible for integrating the Grovs SDK into the application.
 class GrovsManager {
@@ -34,13 +34,20 @@ class GrovsManager {
     private var enabled = true
 
     /// A flag indicating whether the user is authenticated with the Grovs backend.
-    private var authenticated = false
+    private var authenticated = false {
+        didSet {
+            authenticationChanged()
+        }
+    }
 
     /// The URL to handle, used when the user is not authenticated yet.
     private var urlToHandle: String?
 
     /// The handler for various events related to Grovs events.
     private let eventsHandler: EventsHandler
+
+    /// Handler for payment events
+    private let paymentEventsHandler: PaymentEventsHandler
 
     /// Stores the payloads received since the startup
     private var receivedPayloads = [[String: Any]]()
@@ -117,6 +124,7 @@ class GrovsManager {
         self.delegate = delegate
         self.apiService = APIService(apiKey: apiKey, bundleID: self.bundleID, useTestEnvironment: useTestEnvironment)
         self.eventsHandler = EventsHandler(apiService: self.apiService)
+        self.paymentEventsHandler = PaymentEventsHandler(apiService: self.apiService)
 
         addObservers()
     }
@@ -432,6 +440,12 @@ class GrovsManager {
             }
         }
     }
+
+    private func authenticationChanged() {
+        if authenticated {
+            paymentEventsHandler.start()
+        }
+    }
 }
 
 // MARK: - Scene Delegate Handler
@@ -534,5 +548,42 @@ extension GrovsManager {
 
         // Log an error if the URI scheme is not properly configured.
         DebugLogger.shared.log(.error, "There's a mismatch between the URL Scheme in the project and the one from the dashboard, deeplinking won't function properly!")
+    }
+}
+
+// Purchase events
+
+extension GrovsManager {
+    /// Logs an event and sends it to the backend.
+    /// - Parameter event: The event to log
+    func logInAppPurchase(transactionID: UInt64, completion: @escaping GrovsBoolCompletion) {
+        if !authenticated {
+            // Log an error if the URI scheme is not properly configured.
+            DebugLogger.shared.log(.error, "The SDK is not authenticated the event is not sent.")
+            completion(false)
+            return
+        }
+
+        paymentEventsHandler.logInAppPurchase(transactionID: transactionID, completion: completion)
+    }
+
+    /// Logs a custom purchase transaction and sends it to the backend.
+    ///
+    /// - Parameters:
+    ///   - type: The type of transaction (e.g., purchase, refund).
+    ///   - priceInCents: The price of the transaction in cents.
+    ///   - currency: The currency of the transaction (e.g., "USD").
+    ///   - productID: An optional product identifier.
+    ///   - startDate: An optional start date for the transaction. Defaults to the current date if not provided.
+    ///   - completion: A closure that gets called once the transaction is processed.
+    func logCustomPurchase(type: TransactionType, priceInCents: Int, currency: String, productID: String? = nil, startDate: Date? = nil, completion: @escaping GrovsBoolCompletion) {
+        if !authenticated {
+            // Log an error if the URI scheme is not properly configured.
+            DebugLogger.shared.log(.error, "The SDK is not authenticated the event is not sent.")
+            completion(false)
+            return
+        }
+
+        paymentEventsHandler.logCustomPurchase(type: type, priceInCents: priceInCents, currency: currency, productID: productID, startDate: startDate, completion: completion)
     }
 }

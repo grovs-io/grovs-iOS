@@ -239,7 +239,6 @@ class EventsHandler {
         }
 
         sendingEvents = true
-
         // Send normal events to the backend
         storage.getEvents { events in
             guard let events = events else {
