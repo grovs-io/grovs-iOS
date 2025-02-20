@@ -34,7 +34,11 @@ class GrovsManager {
     private var enabled = true
 
     /// A flag indicating whether the user is authenticated with the Grovs backend.
-    private var authenticated = false
+    private var authenticated = false {
+        didSet {
+            handleActions()
+        }
+    }
 
     /// The URL to handle, used when the user is not authenticated yet.
     private var urlToHandle: String?
@@ -102,6 +106,7 @@ class GrovsManager {
 
     private let notificationsDisplayDispatchGroup = DispatchGroup()
     private var displayedNotificationsIds = [Int]()
+    private var actions = [GrovsAction]()
 
     // MARK: - Initialization
 
@@ -158,8 +163,13 @@ class GrovsManager {
         }
 
         guard authenticated else {
-            DebugLogger.shared.log(.info, "SDK is not ready for usage yet.")
-            completion(nil)
+            let action = GrovsAction(mainBlock: {
+                self.generateLink(title: title, subtitle: subtitle, imageURL: imageURL, data: data, tags: tags, completion: completion)
+            }, failureBlock: {
+                completion(nil)
+            })
+            actions.append(action)
+
             return
         }
 
@@ -253,6 +263,17 @@ class GrovsManager {
     ///   - page: The page number of notifications to retrieve. This allows for pagination of notifications.
     ///   - completion: A closure that will be called with an array of notifications when the request completes.
     func getNotifications(page: Int, completion: @escaping GrovsNotificationsClosure) {
+        guard authenticated else {
+            let action = GrovsAction(mainBlock: {
+                self.getNotifications(page: page, completion: completion)
+            }, failureBlock: {
+                completion(nil)
+            })
+            actions.append(action)
+
+            return
+        }
+
         apiService.notifications(page: page, completion: completion) // Delegates the call to the API service.
     }
 
@@ -260,7 +281,49 @@ class GrovsManager {
     ///
     /// - Parameter completion: A closure that will be called with the count of unread notifications, or `nil` if the request fails.
     func getNumberOfUnreadNotifications(completion: @escaping GrovsIntClosure) {
+        guard authenticated else {
+            let action = GrovsAction(mainBlock: {
+                self.getNumberOfUnreadNotifications(completion: completion)
+            }, failureBlock: {
+                completion(nil)
+            })
+            actions.append(action)
+
+            return
+        }
+
         apiService.numberOfUnreadNotifications(completion: completion) // Delegates the call to the API service.
+    }
+
+    /// Displays the messages view controller modally.
+    ///
+    /// - This method initializes a `UINavigationController` without a navigation bar,
+    ///   sets up a `MessagesViewController`, and presents it on top of the current view hierarchy.
+    func displayMessagesViewController(completion: GrovsEmptyClosure?) {
+        guard authenticated else {
+            let action = GrovsAction(mainBlock: {
+                self.displayMessagesViewController(completion: completion)
+            }, failureBlock: {
+                completion?()
+            })
+            actions.append(action)
+
+            return
+        }
+
+        let nav = UINavigationController() // Creates a new navigation controller.
+        nav.navigationBar.isHidden = true // Hides the navigation bar for the messages view.
+
+        if let vc = MessagesViewController.loadVCFromNib()  { // Initializes the messages view controller.
+            vc.manager = self // Assigns the manager to the view controller for handling notifications.
+            vc.dismissalDelegate = DismissalDelegate.shared
+
+            nav.viewControllers = [vc] // Sets the messages view controller as the root of the navigation controller.
+            nav.presentationController?.delegate = DismissalDelegate.shared
+            DismissalDelegate.shared.completion = completion
+
+            Presenter.presentOnTop(nav) // Presents the navigation controller on top of the current view.
+        }
     }
 
     /// Marks a specific notification as read.
@@ -269,6 +332,17 @@ class GrovsManager {
     ///   - notificationID: The unique identifier of the notification to mark as read.
     ///   - completion: A closure that will be called with a boolean indicating the success or failure of the operation.
     func markNotificationAsRead(notificationID: Int, completion: @escaping GrovsBoolCompletion) {
+        guard authenticated else {
+            let action = GrovsAction(mainBlock: {
+                self.markNotificationAsRead(notificationID: notificationID, completion: completion)
+            }, failureBlock: {
+                completion(false)
+            })
+            actions.append(action)
+
+            return
+        }
+
         apiService.markNotificationAsRead(notificationID: notificationID, completion: completion) // Delegates the call to the API service.
     }
     
@@ -352,7 +426,7 @@ class GrovsManager {
                 self.displayAutomaticNotificationsIfNeeded()
             })
 
-            self.handleReceivedAction(payload: payload)
+            self.handleReceivedAction(link: link, payload: payload)
         }
     }
 
@@ -368,16 +442,18 @@ class GrovsManager {
 
         self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails(), url: url) { payload, link in
             self.eventsHandler.setLinkToNewFutureActions(link: link, completion: nil)
-            self.handleReceivedAction(payload: payload)
+            self.handleReceivedAction(link: link, payload: payload)
         }
     }
 
-    private func handleReceivedAction(payload: [String: Any]?) {
+    private func handleReceivedAction(link: String?, payload: [String: Any]?) {
         if let payload = payload {
             receivedPayloads.append(payload)
+        }
 
+        if link != nil || payload != nil {
             DispatchQueue.main.async { [weak self] in
-                self?.delegate?.grovsReceivedPayloadFromDeeplink(payload: payload)
+                self?.delegate?.grovsReceivedPayloadFromDeeplink(link: link, payload: payload)
             }
         }
 
@@ -431,6 +507,18 @@ class GrovsManager {
                 }
             }
         }
+    }
+
+    private func handleActions() {
+        for action in actions {
+            if authenticated {
+                action.mainBlock()
+            } else {
+                action.failureBlock()
+            }
+        }
+
+        actions.removeAll()
     }
 }
 

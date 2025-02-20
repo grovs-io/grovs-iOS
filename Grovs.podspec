@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = 'Grovs'
-  s.version      = '1.5'
+  s.version      = '1.6'
   s.summary      = 'Grovs is a powerful SDK that enables deep linking and universal linking within your iOS applications.'
   s.homepage     = 'https://grovs.io'
   s.license      = { :type => 'MIT', :file => 'LICENSE' }
@@ -9,6 +9,7 @@ Pod::Spec.new do |s|
   s.swift_version = '5.0'
   s.module_name  = 'Grovs' 
 
+  s.resources = 'Sources/**/*.{xib}'
   s.source_files = 'Sources/**/*.swift'  # Adjust this path to match your package structure
 
   s.platform     = :ios

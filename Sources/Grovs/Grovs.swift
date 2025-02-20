@@ -8,7 +8,8 @@ import UIKit
 
 /// A protocol for receiving payload from Grovs SDK.
 public protocol GrovsDelegate {
-    func grovsReceivedPayloadFromDeeplink(payload: [String: Any])
+    // Called when the app is opened from a deeplink
+    func grovsReceivedPayloadFromDeeplink(link: String?, payload: [String: Any]?)
 }
 
 /// A class representing Grovs SDK.
@@ -54,7 +55,12 @@ public class Grovs {
     /// - Parameter enabled: The log level to set.
     /// Default is true.
     public static func setSDK(enabled: Bool) {
-        manager?.setEnabled(enabled)
+        guard let manager else {
+            DebugLogger.shared.log(.error, "The SDK is not configured. Setting SDK enabled won't work.")
+            return
+        }
+
+        manager.setEnabled(enabled)
     }
 
     /// The identifier for the user.
@@ -63,7 +69,12 @@ public class Grovs {
     /// - If set to a new value, it updates the `manager`'s identifier.
     public static var userIdentifier: String? {
         set {
-            manager?.identifier = newValue // Sets the new user identifier.
+            guard let manager else {
+                DebugLogger.shared.log(.error, "The SDK is not configured. Setting the user identifier won't work.")
+                return
+            }
+
+            manager.identifier = newValue // Sets the new user identifier.
         }
         get {
             manager?.identifier // Returns the current user identifier.
@@ -76,7 +87,12 @@ public class Grovs {
     /// - If set to a new value, it updates the `manager`'s attributes.
     public static var userAttributes: [String: Any]? {
         set {
-            manager?.attributes = newValue // Sets the new user attributes.
+            guard let manager else {
+                DebugLogger.shared.log(.error, "The SDK is not configured. Setting user attributes won't work.")
+                return
+            }
+
+            manager.attributes = newValue // Sets the new user attributes.
         }
         get {
             manager?.attributes // Returns the current user attributes.
@@ -89,7 +105,12 @@ public class Grovs {
     /// - If set to a new value, it updates the `manager`'s push token.
     public static var pushToken: String? {
         set {
-            manager?.pushToken = newValue // Sets the new push token.
+            guard let manager else {
+                DebugLogger.shared.log(.error, "The SDK is not configured. Setting the push token won't work.")
+                return
+            }
+
+            manager.pushToken = newValue // Sets the new push token.
         }
         get {
             manager?.pushToken // Returns the current push token.
@@ -118,21 +139,39 @@ public class Grovs {
                                     data: [String: Any]?,
                                     tags: [String]?,
                                     completion: @escaping GrovsURLClosure) {
-        manager?.generateLink(title: title, subtitle: subtitle, imageURL: imageURL, data: data, tags: tags, completion: completion)
+        guard let manager else {
+            DebugLogger.shared.log(.error, "The SDK is not configured. Links cannot be generated.")
+            completion(nil)
+            return
+        }
+
+        manager.generateLink(title: title, subtitle: subtitle, imageURL: imageURL, data: data, tags: tags, completion: completion)
     }
 
     /// Retrieves the last received payload data.
     ///
     /// - Parameter completion: A closure that takes a dictionary representing the payload data as its parameter.
     public static func lastReceivedPayload(completion: @escaping GrovsPayloadClosure) {
-        manager?.getLastPayload(completion: completion)
+        guard let manager else {
+            DebugLogger.shared.log(.error, "The SDK is not configured. Last received payloads won't work.")
+            completion(nil)
+            return
+        }
+
+        manager.getLastPayload(completion: completion)
     }
 
     /// Retrieves all payloads received since startup.
     ///
     /// - Parameter completion: A closure that takes an array of dictionaries, each representing a payload data, as its parameter.
     public static func allReceivedPayloadsSinceStartup(completion: @escaping GrovsPayloadsClosure) {
-        manager?.getAllPayloadsSinceStartup(completion: completion)
+        guard let manager else {
+            DebugLogger.shared.log(.error, "The SDK is not configured. Fetching the payloads won't work.")
+            completion(nil)
+            return
+        }
+
+        manager.getAllPayloadsSinceStartup(completion: completion)
     }
 
     // MARK: Private methods
@@ -222,19 +261,13 @@ extension Grovs {
     /// - This method initializes a `UINavigationController` without a navigation bar,
     ///   sets up a `MessagesViewController`, and presents it on top of the current view hierarchy.
     public static func displayMessagesViewController(completion: GrovsEmptyClosure?) {
-        let nav = UINavigationController() // Creates a new navigation controller.
-        nav.navigationBar.isHidden = true // Hides the navigation bar for the messages view.
-
-        if let vc = MessagesViewController.loadVCFromNib()  { // Initializes the messages view controller.
-            vc.manager = manager // Assigns the manager to the view controller for handling notifications.
-            vc.dismissalDelegate = DismissalDelegate.shared
-
-            nav.viewControllers = [vc] // Sets the messages view controller as the root of the navigation controller.
-            nav.presentationController?.delegate = DismissalDelegate.shared
-            DismissalDelegate.shared.completion = completion
-
-            Presenter.presentOnTop(nav) // Presents the navigation controller on top of the current view.
+        guard let manager else {
+            DebugLogger.shared.log(.error, "The SDK is not configured. Displaying messages won't work.")
+            completion?()
+            return
         }
+
+        manager.displayMessagesViewController(completion: completion)
     }
 
     /// Retrieves the number of unread messages asynchronously.
@@ -242,6 +275,12 @@ extension Grovs {
     /// - Parameter completion: A closure that is called with the number of unread notifications.
     /// - The completion closure receives an optional integer value representing the count of unread notifications.
     public static func numberOfUnreadMessages(completion: @escaping GrovsIntClosure) {
-        manager?.getNumberOfUnreadNotifications(completion: completion) // Calls the manager to fetch unread notifications.
+        guard let manager else {
+            DebugLogger.shared.log(.error, "The SDK is not configured. Number of unread messages won't work.")
+            completion(nil)
+            return
+        }
+
+        manager.getNumberOfUnreadNotifications(completion: completion) // Calls the manager to fetch unread notifications.
     }
 }

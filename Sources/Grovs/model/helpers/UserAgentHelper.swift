@@ -1,9 +1,9 @@
 //
 //  UserAgentHelper.swift
-//  grovs-ios-sdk-development
 //
-//  Created by Dragos Dobrean on 23.07.2024.
+//  grovs
 //
+
 
 import Foundation
 import WebKit
