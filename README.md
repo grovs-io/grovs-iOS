@@ -112,7 +112,7 @@ class YourViewController: UIViewController, GrovsDelegate {
     }
 
     // Implement the delegate method
-    func grovsReceivedPayloadFromDeeplink(payload: [String: Any]) {
+    func grovsReceivedPayloadFromDeeplink(link: String?, payload: [String: Any]?) {
         // Handle the received payload here
     }
 }
