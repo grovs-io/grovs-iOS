@@ -155,6 +155,8 @@ class GrovsManager {
                       imageURL: String?,
                       data: [String: Any]?,
                       tags: [String]?,
+                      customRedirects: CustomRedirects?,
+                      showPreview: Bool?,
                       completion: @escaping GrovsURLClosure) {
         guard enabled else {
             DebugLogger.shared.log(.error, "The SDK is not enabled. Links cannot be generated.")
@@ -164,7 +166,14 @@ class GrovsManager {
 
         guard authenticated else {
             let action = GrovsAction(mainBlock: {
-                self.generateLink(title: title, subtitle: subtitle, imageURL: imageURL, data: data, tags: tags, completion: completion)
+                self.generateLink(title: title,
+                                  subtitle: subtitle,
+                                  imageURL: imageURL,
+                                  data: data,
+                                  tags: tags,
+                                  customRedirects: customRedirects,
+                                  showPreview: showPreview,
+                                  completion: completion)
             }, failureBlock: {
                 completion(nil)
             })
@@ -186,7 +195,14 @@ class GrovsManager {
                 tagsString = String(data: jsonData, encoding: .utf8)
             }
 
-            apiService.generateLink(title: title, subtitle: subtitle, imageURL: imageURL, data: jsonString, tags: tagsString, completion: completion)
+            apiService.generateLink(title: title,
+                                    subtitle: subtitle,
+                                    imageURL: imageURL,
+                                    data: jsonString,
+                                    tags: tagsString,
+                                    customRedirects: customRedirects,
+                                    showPreview: showPreview,
+                                    completion: completion)
             return
         } catch {
             DebugLogger.shared.log(.error, "Failed to convert data to JSON: \(error.localizedDescription)")

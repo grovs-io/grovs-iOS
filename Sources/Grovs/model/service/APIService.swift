@@ -157,17 +157,29 @@ class APIService: BaseService {
     ///   - subtitle: The subtitle for the link.
     ///   - imageURL: The image URL for the link.
     ///   - data: Additional data for the link.
+    ///   - tags: Tags to associate with the link.
+    ///   - customRedirects: Override the default redirects for a link.
     ///   - completion: A closure returning the generated link as a URL.
     func generateLink(title: String?,
                       subtitle: String?,
                       imageURL: String?,
                       data: String?,
                       tags: String?,
+                      customRedirects: CustomRedirects?,
+                      showPreview: Bool?,
                       completion: @escaping GrovsURLClosure) {
 
         var request = urlRequestWithAuthHeaders(path: Constants.URLs.generateLink)
         request.httpMethod = "POST"
-        let body = ["title": title, "subtitle": subtitle, "image_url": imageURL, "data": data, "tags": tags] as [String : Any?]
+        let body = ["title": title,
+                    "subtitle": subtitle,
+                    "image_url": imageURL,
+                    "data": data,
+                    "tags": tags,
+                    "ios_custom_redirect": customRedirects?.ios?.toBackend(),
+                    "android_custom_redirect": customRedirects?.android?.toBackend(),
+                    "desktop_custom_redirect": customRedirects?.desktop?.toBackend(),
+                    "show_preview": showPreview] as [String : Any?]
         request.httpBody = body.dictToData()
 
         DebugLogger.shared.log(.info, "Generating link")

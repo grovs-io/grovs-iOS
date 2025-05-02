@@ -23,6 +23,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		743975DC2DC3AF2A003AC730 /* CustomLinkRedirect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743975DB2DC3AF2A003AC730 /* CustomLinkRedirect.swift */; };
 		74989D8B2DB9156F000B6CE7 /* MessageTableViewCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 74989D862DB9156F000B6CE7 /* MessageTableViewCell.xib */; };
 		74989D8C2DB9156F000B6CE7 /* MessagesViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 74989D612DB9156F000B6CE7 /* MessagesViewController.xib */; };
 		74989D8D2DB9156F000B6CE7 /* MessageDetailsViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 74989D5F2DB9156F000B6CE7 /* MessageDetailsViewController.xib */; };
@@ -58,6 +59,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		743975DB2DC3AF2A003AC730 /* CustomLinkRedirect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomLinkRedirect.swift; sourceTree = "<group>"; };
 		74989D432DB91502000B6CE7 /* GrovsSDK.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = GrovsSDK.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		74989D5E2DB9156F000B6CE7 /* MessageDetailsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDetailsViewController.swift; sourceTree = "<group>"; };
 		74989D5F2DB9156F000B6CE7 /* MessageDetailsViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MessageDetailsViewController.xib; sourceTree = "<group>"; };
@@ -168,6 +170,7 @@
 				74989D6E2DB9156F000B6CE7 /* Event.swift */,
 				74989D6F2DB9156F000B6CE7 /* GrovsAction.swift */,
 				74989D702DB9156F000B6CE7 /* Notification.swift */,
+				743975DB2DC3AF2A003AC730 /* CustomLinkRedirect.swift */,
 			);
 			path = entities;
 			sourceTree = "<group>";
@@ -411,6 +414,7 @@
 				74989DA72DB91570000B6CE7 /* UIDevice+Extension.swift in Sources */,
 				74989DA82DB91570000B6CE7 /* Presenter.swift in Sources */,
 				74989DA92DB91570000B6CE7 /* APIService.swift in Sources */,
+				743975DC2DC3AF2A003AC730 /* CustomLinkRedirect.swift in Sources */,
 				74989DAA2DB91570000B6CE7 /* EventsStorage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

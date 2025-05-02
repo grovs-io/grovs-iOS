@@ -133,11 +133,13 @@ public class Grovs {
     ///   - data: Additional data for the link.
     ///   - tags: Tags for the link.
     ///   - completion: A closure to be executed after generating the link.
-    public static func generateLink(title: String?,
-                                    subtitle: String?,
-                                    imageURL: String?,
-                                    data: [String: Any]?,
-                                    tags: [String]?,
+    public static func generateLink(title: String? = nil,
+                                    subtitle: String? = nil,
+                                    imageURL: String? = nil,
+                                    data: [String: Any]? = nil,
+                                    tags: [String]? = nil,
+                                    customRedirects: CustomRedirects? = nil,
+                                    showPreview: Bool? = nil,
                                     completion: @escaping GrovsURLClosure) {
         guard let manager else {
             DebugLogger.shared.log(.error, "The SDK is not configured. Links cannot be generated.")
@@ -145,7 +147,14 @@ public class Grovs {
             return
         }
 
-        manager.generateLink(title: title, subtitle: subtitle, imageURL: imageURL, data: data, tags: tags, completion: completion)
+        manager.generateLink(title: title,
+                             subtitle: subtitle,
+                             imageURL: imageURL,
+                             data: data,
+                             tags: tags,
+                             customRedirects: customRedirects,
+                             showPreview: showPreview,
+                             completion: completion)
     }
 
     /// Retrieves the last received payload data.
