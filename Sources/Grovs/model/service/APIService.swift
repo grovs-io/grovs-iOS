@@ -163,6 +163,8 @@ class APIService: BaseService {
     ///   - data: Additional data for the link.
     ///   - tags: Tags to associate with the link.
     ///   - customRedirects: Override the default redirects for a link.
+    ///   - showPreviewiOS: Override the default app preview for a link for iOS.
+    ///   - showPreviewAndroid: Override the default app preview for a link for Android.
     ///   - completion: A closure returning the generated link as a URL.
     func generateLink(title: String?,
                       subtitle: String?,
@@ -170,7 +172,8 @@ class APIService: BaseService {
                       data: String?,
                       tags: String?,
                       customRedirects: CustomRedirects?,
-                      showPreview: Bool?,
+                      showPreviewiOS: Bool?,
+                      showPreviewAndroid: Bool?,
                       completion: @escaping GrovsURLClosure) {
 
         var request = urlRequestWithAuthHeaders(path: Constants.URLs.generateLink)
@@ -183,7 +186,8 @@ class APIService: BaseService {
                     "ios_custom_redirect": customRedirects?.ios?.toBackend(),
                     "android_custom_redirect": customRedirects?.android?.toBackend(),
                     "desktop_custom_redirect": customRedirects?.desktop?.toBackend(),
-                    "show_preview": showPreview] as [String : Any?]
+                    "show_preview_ios": showPreviewiOS,
+                    "show_preview_android": showPreviewAndroid] as [String : Any?]
         request.httpBody = body.dictToData()
 
         DebugLogger.shared.log(.info, "Generating link")

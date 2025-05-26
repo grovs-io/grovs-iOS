@@ -149,6 +149,8 @@ class GrovsManager {
     ///   - imageURL: The URL of the image associated with the link.
     ///   - data: Additional data to include in the link.
     ///   - tags: Tags for the link.
+    ///   - showPreviewiOS: Override the default app preview for a link for iOS.
+    ///   - showPreviewAndroid: Override the default app preview for a link for Android.
     ///   - completion: A closure to be called upon completion of link generation.
     func generateLink(title: String?,
                       subtitle: String?,
@@ -156,7 +158,8 @@ class GrovsManager {
                       data: [String: Any]?,
                       tags: [String]?,
                       customRedirects: CustomRedirects?,
-                      showPreview: Bool?,
+                      showPreviewiOS: Bool?,
+                      showPreviewAndroid: Bool?,
                       completion: @escaping GrovsURLClosure) {
         guard enabled else {
             DebugLogger.shared.log(.error, "The SDK is not enabled. Links cannot be generated.")
@@ -172,7 +175,8 @@ class GrovsManager {
                                   data: data,
                                   tags: tags,
                                   customRedirects: customRedirects,
-                                  showPreview: showPreview,
+                                  showPreviewiOS: showPreviewiOS,
+                                  showPreviewAndroid: showPreviewAndroid,
                                   completion: completion)
             }, failureBlock: {
                 completion(nil)
@@ -201,7 +205,8 @@ class GrovsManager {
                                     data: jsonString,
                                     tags: tagsString,
                                     customRedirects: customRedirects,
-                                    showPreview: showPreview,
+                                    showPreviewiOS: showPreviewiOS,
+                                    showPreviewAndroid: showPreviewAndroid,
                                     completion: completion)
             return
         } catch {

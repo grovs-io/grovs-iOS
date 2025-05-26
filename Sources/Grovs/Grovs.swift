@@ -132,6 +132,8 @@ public class Grovs {
     ///   - imageURL: The URL of the image associated with the link.
     ///   - data: Additional data for the link.
     ///   - tags: Tags for the link.
+    ///   - showPreviewiOS: Override the default app preview for a link for iOS.
+    ///   - showPreviewAndroid: Override the default app preview for a link for Android.
     ///   - completion: A closure to be executed after generating the link.
     public static func generateLink(title: String? = nil,
                                     subtitle: String? = nil,
@@ -139,7 +141,8 @@ public class Grovs {
                                     data: [String: Any]? = nil,
                                     tags: [String]? = nil,
                                     customRedirects: CustomRedirects? = nil,
-                                    showPreview: Bool? = nil,
+                                    showPreviewiOS: Bool? = nil,
+                                    showPreviewAndroid: Bool? = nil,
                                     completion: @escaping GrovsURLClosure) {
         guard let manager else {
             DebugLogger.shared.log(.error, "The SDK is not configured. Links cannot be generated.")
@@ -153,7 +156,8 @@ public class Grovs {
                              data: data,
                              tags: tags,
                              customRedirects: customRedirects,
-                             showPreview: showPreview,
+                             showPreviewiOS: showPreviewiOS,
+                             showPreviewAndroid: showPreviewAndroid,
                              completion: completion)
     }
 

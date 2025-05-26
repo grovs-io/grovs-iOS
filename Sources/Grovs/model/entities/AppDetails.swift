@@ -12,10 +12,14 @@ struct AppDetails: Codable {
     let device: String
     let deviceID: String
     let userAgent: String
+    let screenWidth: Int?
+    let screenHeight: Int?
+    let language: String?
+    let timeZone: String?
 
     /// Coding keys for decoding and encoding.
     private enum CodingKeys : String, CodingKey {
-        case version, build, bundle, device, deviceID, userAgent
+        case version, build, bundle, device, deviceID, userAgent, screenWidth, screenHeight, language, timeZone
     }
 
     /// Converts the app details to a backend-compatible dictionary.
@@ -27,7 +31,11 @@ struct AppDetails: Codable {
             "vendor_id": deviceID,
             "app_version": version,
             "build": build,
-            "device": device
+            "device": device,
+            "timezone": timeZone,
+            "language": language,
+            "screen_width": screenWidth,
+            "screen_height": screenHeight
         ]
     }
 }

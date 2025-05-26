@@ -32,10 +32,17 @@ class AppDetailsHelper {
 
         let device = UIDevice.modelName
 
+        let screenBounds = UIScreen.main.bounds
+        let screenWidth = Int(max(screenBounds.width, screenBounds.height))
+        let screenHeight = Int(min(screenBounds.width, screenBounds.height))
+
+        let language = Locale.preferredLanguages.first
+        let timeZone = TimeZone.current.identifier
+
         let deviceID = UIDevice.current.identifierForVendor?.uuidString ?? Constants.unknownValue
         let userAgent = getUserAgent()
 
-        return AppDetails(version: version, build: build, bundle: bundle, device: device, deviceID: deviceID, userAgent: userAgent)
+        return AppDetails(version: version, build: build, bundle: bundle, device: device, deviceID: deviceID, userAgent: userAgent, screenWidth: screenWidth, screenHeight: screenHeight, language: language, timeZone: timeZone)
     }
 
     /// Retrieves the bundle identifier of the app.
