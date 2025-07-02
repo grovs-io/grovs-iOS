@@ -107,6 +107,7 @@ class GrovsManager {
     private let notificationsDisplayDispatchGroup = DispatchGroup()
     private var displayedNotificationsIds = [Int]()
     private var actions = [GrovsAction]()
+    private var handlingURL = false
 
     // MARK: - Initialization
 
@@ -459,7 +460,7 @@ class GrovsManager {
     }
 
     private func getDataForDevice() {
-        guard enabled, authenticated else {
+        guard enabled, authenticated, handlingURL == false else {
             return
         }
 
@@ -482,9 +483,12 @@ class GrovsManager {
             return
         }
 
-        self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails(), url: url) { payload, link in
+        handlingURL = true
+        apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails(), url: url) { payload, link in
             self.eventsHandler.setLinkToNewFutureActions(link: link, completion: nil)
             self.handleReceivedAction(link: link, payload: payload)
+
+            self.handlingURL = false
         }
     }
 

@@ -80,6 +80,10 @@ class APIService: BaseService {
     /// Indicates if the test environment should be used
     private var useTestEnvironment = false
 
+    /// Fetch url data tasks
+    private var fetchPayloadDetailsTask: URLSessionTask?
+    private var fetchPayloadForURLDetailsTask: URLSessionTask?
+
     // MARK: - Lifecycle
 
     /// Initializes an `APIService` object with the provided API key and bundle ID.
@@ -111,8 +115,11 @@ class APIService: BaseService {
 
         request.httpBody = body.dictToData()
 
+        fetchPayloadForURLDetailsTask?.cancel()
+        fetchPayloadDetailsTask?.cancel()
+
         DebugLogger.shared.log(.info, "Fetching payload for device and URL")
-        makeRequest(URLRequest: request) { success, json in
+        fetchPayloadForURLDetailsTask = makeRequest(URLRequest: request) { success, json in
             guard let json = json, success else {
                 DebugLogger.shared.log(.info, "Fetching payload for device and URL - No payload")
                 completion(nil, nil)
@@ -139,7 +146,8 @@ class APIService: BaseService {
         request.httpBody = appDetails.toBackend().dictToData()
 
         DebugLogger.shared.log(.info, "Fetching payload for device")
-        makeRequest(URLRequest: request) { success, json in
+        fetchPayloadDetailsTask?.cancel()
+        fetchPayloadDetailsTask = makeRequest(URLRequest: request) { success, json in
             guard let json = json, success else {
                 DebugLogger.shared.log(.info, "Fetching payload for device - No payload")
                 completion(nil, nil)

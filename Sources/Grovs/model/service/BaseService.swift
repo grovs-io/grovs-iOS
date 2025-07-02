@@ -5,6 +5,7 @@
 //
 
 import Foundation
+import UIKit
 
 /// Closure typealias for JSON response handling
 public typealias JSONClosure = (_ success: Bool, _ json: [String: Any]?) -> Void
@@ -33,7 +34,13 @@ open class BaseService: NSObject {
     private var cachedCompletion: JSONClosure? = nil
 
     /// Retry delay for failed requests
-    private var currentRetryDelay: Double = 10 // seconds
+    private var currentRetryDelay: Double = 2 // seconds
+
+    /// Queued main requests
+    private var queuedRequests: [() -> Void] = []
+
+    /// Reqyests queue
+    private let requestQueue = DispatchQueue(label: "com.grovs.requestQueue")
 
     // MARK: - Initialization
 
@@ -45,6 +52,13 @@ open class BaseService: NSObject {
 
         session = URLSession(configuration: config, delegate: nil, delegateQueue: delegateQueue)
         backgroundSession = URLSession(configuration: backgroundConfig, delegate: self, delegateQueue: delegateQueue)
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(flushMainQueuedRequests),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
     }
 
     // MARK: - Request Methods
@@ -56,19 +70,39 @@ open class BaseService: NSObject {
     ///   - URLRequest: The URLRequest to be executed.
     ///   - completion: Completion handler to be called when the request finishes.
 
-    func makeRequest(background: Bool = false, URLRequest: URLRequest, completion: @escaping JSONClosure) {
+    @discardableResult
+    func makeRequest(background: Bool = false, URLRequest: URLRequest, completion: @escaping JSONClosure) -> URLSessionTask? {
         if background {
             cachedCompletion = completion
 
             let task = backgroundSession.downloadTask(with: URLRequest)
             task.resume()
 
-        } else {
-            let task = session.dataTask(with: URLRequest) { (data, urlResponse, error) in
+            return task
 
+        } else {
+
+            let task = session.dataTask(with: URLRequest) { (data, urlResponse, error) in
                 if let error = error as? URLError {
                     // Check if the error is due to no internet connection
-                    if error.code == .notConnectedToInternet || error.code == .timedOut || error.code == .networkConnectionLost {
+                    if  error.code == .networkConnectionLost {
+                        self.requestQueue.async {
+                            self.queuedRequests.append {
+                                self.makeRequest(background: background, URLRequest: URLRequest, completion: completion)
+                            }
+                        }
+
+                        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + self.currentRetryDelay, execute: {
+                            self.requestQueue.async {
+                                self.flushMainQueuedRequests()
+                            }
+                        })
+
+                        return
+                    }
+
+
+                    if error.code == .notConnectedToInternet || error.code == .timedOut {
                         // Retry
                         DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + self.currentRetryDelay, execute: {
                             self.makeRequest(background: background, URLRequest: URLRequest, completion: completion)
@@ -77,11 +111,12 @@ open class BaseService: NSObject {
                         if self.currentRetryDelay < 60 {
                             self.currentRetryDelay += 10
                         }
+
                         return
                     }
                 }
 
-                self.currentRetryDelay = 10
+                self.currentRetryDelay = 2
 
                 guard error == nil, let data = data, let http = urlResponse as? HTTPURLResponse else {
                     completion(false, nil)
@@ -111,6 +146,21 @@ open class BaseService: NSObject {
             }
 
             task.resume()
+
+            return task
+        }
+    }
+
+    // MARK: Private methods
+
+    @objc private func flushMainQueuedRequests() {
+        requestQueue.async {
+            let requestsToRun = self.queuedRequests
+            self.queuedRequests.removeAll()
+
+            for request in requestsToRun {
+                request()
+            }
         }
     }
 }
