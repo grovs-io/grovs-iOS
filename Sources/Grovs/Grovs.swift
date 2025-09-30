@@ -14,10 +14,12 @@ public protocol GrovsDelegate {
 
 /// A class representing Grovs SDK.
 public class Grovs {
+    private static var _delegate: GrovsDelegate?
 
     /// The delegate to receive callbacks from the SDK.
     public static var delegate: GrovsDelegate? {
         set {
+            _delegate = newValue
             manager?.delegate = newValue
         }
 
@@ -30,7 +32,11 @@ public class Grovs {
     private static var APIKey: String!
 
     /// The manager handling Grovs functionality.
-    private static var manager: GrovsManager?
+    private static var manager: GrovsManager? {
+        didSet {
+            manager?.delegate = _delegate
+        }
+    }
 
     // MARK: Public methods
 
