@@ -304,7 +304,7 @@ class EventsHandler {
 
     /// Send events to backend if needed
     private func handleEventsIfNeeded(completion: GrovsEmptyClosure?) {
-        if handledAppOrSceneDelegates && hasFetchedPayloadLink && isLeewayPassed() {
+        if (handledAppOrSceneDelegates || isLeewayPassed()) && hasFetchedPayloadLink {
             sendNormalEventsToBackend(completion: completion)
         } else {
             completion?()
