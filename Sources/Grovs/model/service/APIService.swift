@@ -53,7 +53,7 @@ class APIService: BaseService {
             static let linkDetails = "/link_details"
         }
         struct Headers {
-            static let SDKVersion = "1.4"
+            static let SDKVersion = "2.1"
 
             static let apiKey = "PROJECT-KEY"
             static let identifier = "IDENTIFIER"
