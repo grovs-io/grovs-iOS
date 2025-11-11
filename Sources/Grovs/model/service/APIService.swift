@@ -177,6 +177,9 @@ class APIService: BaseService {
     ///   - customRedirects: Override the default redirects for a link.
     ///   - showPreviewiOS: Override the default app preview for a link for iOS.
     ///   - showPreviewAndroid: Override the default app preview for a link for Android.
+    ///   - trackingCampaign: The campaign name for tracking purposes (e.g. `"BlackFriday2025"`).
+    ///   - trackingSource: The traffic source (e.g. `"instagram"`, `"newsletter"`).
+    ///   - trackingMedium: The medium used for the campaign (e.g. `"cpc"`, `"email"`, `"social"`).
     ///   - completion: A closure returning the generated link as a URL.
     func generateLink(title: String?,
                       subtitle: String?,
@@ -186,6 +189,9 @@ class APIService: BaseService {
                       customRedirects: CustomRedirects?,
                       showPreviewiOS: Bool?,
                       showPreviewAndroid: Bool?,
+                      trackingCampaign: String? = nil,
+                      trackingSource: String? = nil,
+                      trackingMedium: String? = nil,
                       completion: @escaping GrovsURLClosure) {
 
         var request = urlRequestWithAuthHeaders(path: Constants.URLs.generateLink)
@@ -199,7 +205,10 @@ class APIService: BaseService {
                     "android_custom_redirect": customRedirects?.android?.toBackend(),
                     "desktop_custom_redirect": customRedirects?.desktop?.toBackend(),
                     "show_preview_ios": showPreviewiOS,
-                    "show_preview_android": showPreviewAndroid] as [String : Any?]
+                    "show_preview_android": showPreviewAndroid,
+                    "tracking_campaign": trackingCampaign,
+                    "tracking_source": trackingSource,
+                    "tracking_medium": trackingMedium] as [String : Any?]
         request.httpBody = body.dictToData()
 
         DebugLogger.shared.log(.info, "Generating link")

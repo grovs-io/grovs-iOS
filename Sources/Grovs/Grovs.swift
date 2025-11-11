@@ -134,6 +134,9 @@ public class Grovs {
     ///   - tags: Tags for the link.
     ///   - showPreviewiOS: Override the default app preview for a link for iOS.
     ///   - showPreviewAndroid: Override the default app preview for a link for Android.
+    ///   - trackingCampaign: The campaign name for tracking purposes (e.g. `"BlackFriday2025"`).
+    ///   - trackingSource: The traffic source (e.g. `"instagram"`, `"newsletter"`).
+    ///   - trackingMedium: The medium used for the campaign (e.g. `"cpc"`, `"email"`, `"social"`).
     ///   - completion: A closure to be executed after generating the link.
     public static func generateLink(title: String? = nil,
                                     subtitle: String? = nil,
@@ -143,6 +146,9 @@ public class Grovs {
                                     customRedirects: CustomRedirects? = nil,
                                     showPreviewiOS: Bool? = nil,
                                     showPreviewAndroid: Bool? = nil,
+                                    trackingCampaign: String? = nil,
+                                    trackingSource: String? = nil,
+                                    trackingMedium: String? = nil,
                                     completion: @escaping GrovsURLClosure) {
         guard let manager else {
             DebugLogger.shared.log(.error, "The SDK is not configured. Links cannot be generated.")
@@ -158,6 +164,9 @@ public class Grovs {
                              customRedirects: customRedirects,
                              showPreviewiOS: showPreviewiOS,
                              showPreviewAndroid: showPreviewAndroid,
+                             trackingCampaign: trackingCampaign,
+                             trackingSource: trackingSource,
+                             trackingMedium: trackingMedium,
                              completion: completion)
     }
 
