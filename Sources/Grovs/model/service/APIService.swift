@@ -12,7 +12,7 @@ public typealias GrovsURLClosure = (_ url: URL?) -> Void
 /// A typealias for a closure returning a dictionary.
 public typealias GrovsPayloadClosure = (_ dictionary: [String: Any]?) -> Void
 
-public typealias GrovsDeviceDataClosureClosure = (_ dictionary: [String: Any]?, _ link: String?) -> Void
+public typealias GrovsDeviceDataClosureClosure = (_ dictionary: [String: Any]?, _ link: String?, _ tracking: [String: Any]?) -> Void
 
 /// A typealias for a closure returning a array of dictionaries.
 public typealias GrovsPayloadsClosure = (_ array: [[String: Any]]?) -> Void
@@ -36,8 +36,10 @@ class APIService: BaseService {
 
     private struct Constants {
         struct URLs {
-            static let endpoint = "https://sdk.sqd.link/api/v1/sdk"
+//            static let endpoint = "https://sdk.sqd.link/api/v1/sdk"
 //            static let endpoint = "http://sdk.lvh.me:3000/api/v1/sdk"
+
+            static let endpoint = "http://sdk.appss.ro/api/v1/sdk"
 
             static let authenticate = "/authenticate"
             static let dataForDevice = "/data_for_device"
@@ -122,15 +124,16 @@ class APIService: BaseService {
         fetchPayloadForURLDetailsTask = makeRequest(URLRequest: request) { success, json in
             guard let json = json, success else {
                 DebugLogger.shared.log(.info, "Fetching payload for device and URL - No payload")
-                completion(nil, nil)
+                completion(nil, nil, nil)
                 return
             }
 
             let data = json["data"] as? [String: Any]
             let link = json["link"] as? String
+            let tracking = json["tracking"] as? [String: Any]
 
             DebugLogger.shared.log(.info, "Fetching payload for device and URL - Received payload")
-            completion(data, link)
+            completion(data, link, tracking)
         }
     }
 
@@ -150,15 +153,16 @@ class APIService: BaseService {
         fetchPayloadDetailsTask = makeRequest(URLRequest: request) { success, json in
             guard let json = json, success else {
                 DebugLogger.shared.log(.info, "Fetching payload for device - No payload")
-                completion(nil, nil)
+                completion(nil, nil, nil)
                 return
             }
 
             let data = json["data"] as? [String: Any]
             let link = json["link"] as? String
+            let tracking = json["tracking"] as? [String: Any]
 
             DebugLogger.shared.log(.info, "Fetching payload for device - Received payload")
-            completion(data, link)
+            completion(data, link, tracking)
         }
     }
 

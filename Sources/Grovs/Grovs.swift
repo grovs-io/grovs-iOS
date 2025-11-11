@@ -9,7 +9,7 @@ import UIKit
 /// A protocol for receiving payload from Grovs SDK.
 public protocol GrovsDelegate {
     // Called when the app is opened from a deeplink
-    func grovsReceivedPayloadFromDeeplink(link: String?, payload: [String: Any]?)
+    func grovsReceivedPayloadFromDeeplink(link: String?, payload: [String: Any]?, tracking: [String: Any]?)
 }
 
 /// A class representing Grovs SDK.

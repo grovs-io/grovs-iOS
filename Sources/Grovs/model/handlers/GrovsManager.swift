@@ -464,12 +464,12 @@ class GrovsManager {
             return
         }
 
-        self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails()) { payload, link in
+        self.apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails()) { payload, link, tracking in
             self.eventsHandler.setLinkToNewFutureActions(link: link, completion: {
                 self.displayAutomaticNotificationsIfNeeded()
             })
 
-            self.handleReceivedAction(link: link, payload: payload)
+            self.handleReceivedAction(link: link, payload: payload, tracking: tracking)
         }
     }
 
@@ -484,22 +484,22 @@ class GrovsManager {
         }
 
         handlingURL = true
-        apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails(), url: url) { payload, link in
+        apiService.payloadFor(appDetails: AppDetailsHelper.getAppDetails(), url: url) { payload, link, tracking in
             self.eventsHandler.setLinkToNewFutureActions(link: link, completion: nil)
-            self.handleReceivedAction(link: link, payload: payload)
+            self.handleReceivedAction(link: link, payload: payload, tracking: tracking)
 
             self.handlingURL = false
         }
     }
 
-    private func handleReceivedAction(link: String?, payload: [String: Any]?) {
+    private func handleReceivedAction(link: String?, payload: [String: Any]?, tracking: [String: Any]?) {
         if let payload = payload {
             receivedPayloads.append(payload)
         }
 
         if link != nil || payload != nil {
             DispatchQueue.main.async { [weak self] in
-                self?.delegate?.grovsReceivedPayloadFromDeeplink(link: link, payload: payload)
+                self?.delegate?.grovsReceivedPayloadFromDeeplink(link: link, payload: payload, tracking: tracking)
             }
         }
 
