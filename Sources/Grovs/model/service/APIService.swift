@@ -36,10 +36,8 @@ class APIService: BaseService {
 
     private struct Constants {
         struct URLs {
-//            static let endpoint = "https://sdk.sqd.link/api/v1/sdk"
+            static let endpoint = "https://sdk.sqd.link/api/v1/sdk"
 //            static let endpoint = "http://sdk.lvh.me:3000/api/v1/sdk"
-
-            static let endpoint = "http://sdk.appss.ro/api/v1/sdk"
 
             static let authenticate = "/authenticate"
             static let dataForDevice = "/data_for_device"
