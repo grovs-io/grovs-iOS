@@ -56,6 +56,9 @@
 		74989DA82DB91570000B6CE7 /* Presenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74989D672DB9156F000B6CE7 /* Presenter.swift */; };
 		74989DA92DB91570000B6CE7 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74989D812DB9156F000B6CE7 /* APIService.swift */; };
 		74989DAA2DB91570000B6CE7 /* EventsStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74989D7C2DB9156F000B6CE7 /* EventsStorage.swift */; };
+		74B000052DE3A001000B6CE7 /* TransactionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B000012DE3A001000B6CE7 /* TransactionData.swift */; };
+		74B000062DE3A001000B6CE7 /* PaymentEventsHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B000022DE3A001000B6CE7 /* PaymentEventsHandler.swift */; };
+		74B000072DE3A001000B6CE7 /* PaymentEventsStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B000032DE3A001000B6CE7 /* PaymentEventsStorage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -94,6 +97,9 @@
 		74989D862DB9156F000B6CE7 /* MessageTableViewCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MessageTableViewCell.xib; sourceTree = "<group>"; };
 		74989D882DB9156F000B6CE7 /* Grovs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Grovs.swift; sourceTree = "<group>"; };
 		74989DAB2DB91585000B6CE7 /* grovs_iosTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = grovs_iosTests.swift; sourceTree = "<group>"; };
+		74B000012DE3A001000B6CE7 /* TransactionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionData.swift; sourceTree = "<group>"; };
+		74B000022DE3A001000B6CE7 /* PaymentEventsHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentEventsHandler.swift; sourceTree = "<group>"; };
+		74B000032DE3A001000B6CE7 /* PaymentEventsStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentEventsStorage.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -171,6 +177,7 @@
 				74989D6F2DB9156F000B6CE7 /* GrovsAction.swift */,
 				74989D702DB9156F000B6CE7 /* Notification.swift */,
 				743975DB2DC3AF2A003AC730 /* CustomLinkRedirect.swift */,
+				74B000012DE3A001000B6CE7 /* TransactionData.swift */,
 			);
 			path = entities;
 			sourceTree = "<group>";
@@ -191,6 +198,7 @@
 				74989D762DB9156F000B6CE7 /* Context.swift */,
 				74989D772DB9156F000B6CE7 /* EventsHandler.swift */,
 				74989D782DB9156F000B6CE7 /* GrovsManager.swift */,
+				74B000022DE3A001000B6CE7 /* PaymentEventsHandler.swift */,
 			);
 			path = handlers;
 			sourceTree = "<group>";
@@ -204,6 +212,7 @@
 				74989D7D2DB9156F000B6CE7 /* KeychainHelper.swift */,
 				74989D7E2DB9156F000B6CE7 /* UserAgentHelper.swift */,
 				74989D7F2DB9156F000B6CE7 /* UserDefaultHelper.swift */,
+				74B000032DE3A001000B6CE7 /* PaymentEventsStorage.swift */,
 			);
 			path = helpers;
 			sourceTree = "<group>";
@@ -416,6 +425,9 @@
 				74989DA92DB91570000B6CE7 /* APIService.swift in Sources */,
 				743975DC2DC3AF2A003AC730 /* CustomLinkRedirect.swift in Sources */,
 				74989DAA2DB91570000B6CE7 /* EventsStorage.swift in Sources */,
+				74B000052DE3A001000B6CE7 /* TransactionData.swift in Sources */,
+				74B000062DE3A001000B6CE7 /* PaymentEventsHandler.swift in Sources */,
+				74B000072DE3A001000B6CE7 /* PaymentEventsStorage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

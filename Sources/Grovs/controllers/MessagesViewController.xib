@@ -12,6 +12,7 @@
         <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="MessagesViewController" customModule="Grovs">
             <connections>
                 <outlet property="activityIndicator" destination="bJH-2q-Eqa" id="Sx2-EV-ZF6"/>
+                <outlet property="closeButton" destination="wL2-9i-od5" id="a11y-close-btn"/>
                 <outlet property="tableView" destination="P06-Fw-nb4" id="2U8-rA-7Fl"/>
                 <outlet property="titleLabel" destination="ggr-NQ-wN4" id="6RH-IE-Ck0"/>
                 <outlet property="view" destination="i5M-Pr-FkT" id="sfx-zR-JGt"/>

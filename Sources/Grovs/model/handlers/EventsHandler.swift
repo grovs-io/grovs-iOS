@@ -17,15 +17,20 @@ class EventsHandler {
     private struct Constants {
         static let firstBatchEventsSendingLeeway: Double = 5.0 // Seconds
         static let numberOfDaysForReactivation: Int = 7
+        static let maxEventAgeDays: Int = 7
     }
 
     // MARK: Properties
 
-    private let service: APIService
-    private let storage = EventsStorage()
+    private let service: APIServiceProtocol
+    private let storage: EventsStorageProtocol
+    private let userDefaults: UserDefaultsHelperProtocol
+    private let keychain: KeychainHelperProtocol
+    private let sendingQueue = DispatchQueue(label: "com.grovs.eventsHandler.sending")
     private var linkForFutureActions: String?
     private var sendingEvents = false
-    private var hasFetchedPayloadLink = false
+    private var sendingTimeSpentEvents = false
+    var hasFetchedPayloadLink = false
     private var startupTime: Date!
 
     var handledAppOrSceneDelegates = false {
@@ -38,8 +43,14 @@ class EventsHandler {
 
     /// Initializes the `EventsHandler` with the provided API service.
     /// - Parameter apiService: The service used for API calls
-    init(apiService: APIService) {
-        service = apiService
+    init(apiService: APIServiceProtocol,
+         storage: EventsStorageProtocol = EventsStorage(),
+         userDefaults: UserDefaultsHelperProtocol = UserDefaultsHelper(),
+         keychain: KeychainHelperProtocol = KeychainHelper()) {
+        self.service = apiService
+        self.storage = storage
+        self.userDefaults = userDefaults
+        self.keychain = keychain
 
         // Set up observers and initial events
         startupTime = Date()
@@ -50,6 +61,10 @@ class EventsHandler {
         addObservers()
         addInitialEvents()
         addOpenEvent()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: Public Methods
@@ -83,7 +98,7 @@ class EventsHandler {
 
     /// Called when the application becomes active.
     @objc func applicationDidBecomeActive() {
-        let lastResignTimestamp = UserDefaultsHelper.getInt(key: .grovsResignTimestamp)
+        let lastResignTimestamp = userDefaults.getInt(key: .grovsResignTimestamp)
         if lastResignTimestamp != 0 {
             handleOldEngagementEvents(timestamp: Date.fromSeconds(lastResignTimestamp))
         } else {
@@ -97,7 +112,7 @@ class EventsHandler {
 
     /// Called when the application will resign active.
     @objc func applicationWillResignActive() {
-        UserDefaultsHelper.set(value: Date().toSeconds(), key: .grovsResignTimestamp)
+        userDefaults.setInt(value: Date().toSeconds(), key: .grovsResignTimestamp)
     }
 
     // MARK: Private Methods
@@ -108,13 +123,13 @@ class EventsHandler {
         addReactivationIfNeeded()
 
         // Increment the number of opens in UserDefaults
-        UserDefaultsHelper.set(value: UserDefaultsHelper.getInt(key: .grovsNumberOfOpens) + 1, key: .grovsNumberOfOpens)
+        userDefaults.setInt(value: userDefaults.getInt(key: .grovsNumberOfOpens) + 1, key: .grovsNumberOfOpens)
     }
 
     /// Logs an install event if it's the first app launch.
     private func addInstallIfNeeded() {
-        let numberOfOpens = UserDefaultsHelper.getInt(key: .grovsNumberOfOpens)
-        let linksquaredID = KeychainHelper.getValue(forKey: .linksquaredID)
+        let numberOfOpens = userDefaults.getInt(key: .grovsNumberOfOpens)
+        let linksquaredID = keychain.getValue(forKey: .linksquaredID)
 
         if numberOfOpens == 0 {
             // Log an install event if it's the first open
@@ -127,7 +142,7 @@ class EventsHandler {
 
     /// Logs a reactivation event if the app was inactive for the specified number of days.
     private func addReactivationIfNeeded() {
-        let lastResignTimestamp = UserDefaultsHelper.getInt(key: .grovsLastStartTimestamp)
+        let lastResignTimestamp = userDefaults.getInt(key: .grovsLastStartTimestamp)
         if lastResignTimestamp != 0 {
             let lastResignDate = Date.fromSeconds(lastResignTimestamp)
 
@@ -140,7 +155,7 @@ class EventsHandler {
             }
         }
 
-        UserDefaultsHelper.set(value: Date().toSeconds(), key: .grovsLastStartTimestamp)
+        userDefaults.setInt(value: Date().toSeconds(), key: .grovsLastStartTimestamp)
     }
 
     /// Logs an app open event.
@@ -209,40 +224,34 @@ class EventsHandler {
     }
 
     /// Changes stored events based on a closure and performs a completion handler.
+    /// Uses an atomic read-modify-write so concurrent removes cannot resurrect events.
     /// - Parameter eventHandling: A closure that defines how to modify each event
     /// - Parameter completion: A completion handler to call after processing events
     private func changeStorageEvents(eventHandling: @escaping GrovsChangeEventClosure, completion: GrovsEmptyClosure?) {
-        // Change stored events based on a closure and perform completion
-        storage.getEvents { events in
-            if let events = events {
-                var newEvents = [Event]()
-
-                for event in events {
-                    let newEvent = eventHandling(event)
-                    newEvents.append(newEvent)
-                }
-
-                self.storage.addOrReplaceEvents(events: newEvents) {
-                    DispatchQueue.main.async {
-                        completion?()
-                    }
-                }
+        storage.transformEvents(eventHandling) {
+            DispatchQueue.main.async {
+                completion?()
             }
         }
     }
 
     /// Sends normal events (non-time-spent) to the backend.
     private func sendNormalEventsToBackend(completion: GrovsEmptyClosure?) {
-        if sendingEvents {
+        let alreadySending = sendingQueue.sync { () -> Bool in
+            if sendingEvents { return true }
+            sendingEvents = true
+            return false
+        }
+
+        if alreadySending {
             completion?()
             return
         }
 
-        sendingEvents = true
-
         // Send normal events to the backend
         storage.getEvents { events in
             guard let events = events else {
+                self.sendingQueue.sync { self.sendingEvents = false }
                 completion?()
                 return
             }
@@ -252,8 +261,15 @@ class EventsHandler {
             let group = DispatchGroup()
             for event in events {
                 if event.type != .timeSpent {
+                    // Discard events older than the max age
+                    if let days = event.createdAt.daysBetween(Date()), days >= Constants.maxEventAgeDays {
+                        DebugLogger.shared.log(.error, "Discarding stale event (\(event.type.rawValue)) aged \(days) days")
+                        self.storage.removeEvent(event: event) {}
+                        continue
+                    }
+
                     group.enter()
-                    
+
                     self.service.addEvent(event: event) { value in
                         if value {
                             self.storage.removeEvent(event: event) {
@@ -266,17 +282,27 @@ class EventsHandler {
                 }
             }
 
-            group.wait()
-            self.sendingEvents = false
-            completion?()
+            group.notify(queue: .main) {
+                self.sendingQueue.sync { self.sendingEvents = false }
+                completion?()
+            }
         }
     }
 
     /// Sends time-spent events to the backend.
     private func sendTimeSpentEventsToBackend() {
+        let alreadySending = sendingQueue.sync { () -> Bool in
+            if sendingTimeSpentEvents { return true }
+            sendingTimeSpentEvents = true
+            return false
+        }
+
+        if alreadySending { return }
+
         // Send time-spent events to the backend
         storage.getEvents { events in
             guard let events = events else {
+                self.sendingQueue.sync { self.sendingTimeSpentEvents = false }
                 return
             }
 
@@ -285,6 +311,13 @@ class EventsHandler {
             let group = DispatchGroup()
             for event in events {
                 if event.type == .timeSpent {
+                    // Discard events older than the max age
+                    if let days = event.createdAt.daysBetween(Date()), days >= Constants.maxEventAgeDays {
+                        DebugLogger.shared.log(.error, "Discarding stale time-spent event aged \(days) days")
+                        self.storage.removeEvent(event: event) {}
+                        continue
+                    }
+
                     group.enter()
                     self.service.addEvent(event: event) { value in
                         if value {
@@ -298,12 +331,14 @@ class EventsHandler {
                 }
             }
 
-            group.wait()
+            group.notify(queue: .main) {
+                self.sendingQueue.sync { self.sendingTimeSpentEvents = false }
+            }
         }
     }
 
     /// Send events to backend if needed
-    private func handleEventsIfNeeded(completion: GrovsEmptyClosure?) {
+    func handleEventsIfNeeded(completion: GrovsEmptyClosure?) {
         if (handledAppOrSceneDelegates || isLeewayPassed()) && hasFetchedPayloadLink {
             sendNormalEventsToBackend(completion: completion)
         } else {

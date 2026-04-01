@@ -17,4 +17,28 @@ class MessageTableViewCell: UITableViewCell {
 
     /// A label displaying the title of the message.
     @IBOutlet weak var messageTitleLabel: UILabel!
+
+    // MARK: - Accessibility
+
+    override var accessibilityLabel: String? {
+        get {
+            var components = [String]()
+            if let title = messageTitleLabel?.text, !title.isEmpty {
+                components.append(title)
+            }
+            if let subtitle = messageSubtitleLabel?.text, !subtitle.isEmpty {
+                components.append(subtitle)
+            }
+            if newMessageIndicatorView?.isHidden == false {
+                components.append("Unread")
+            }
+            return components.joined(separator: ", ")
+        }
+        set { super.accessibilityLabel = newValue }
+    }
+
+    override var accessibilityTraits: UIAccessibilityTraits {
+        get { return .button }
+        set { super.accessibilityTraits = newValue }
+    }
 }

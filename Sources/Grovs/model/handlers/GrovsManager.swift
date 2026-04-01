@@ -8,7 +8,7 @@ import Foundation
 import UIKit
 
 /// A closure used for completion handlers returning boolean values.
-typealias GrovsBoolCompletion = (_ value: Bool) -> Void
+public typealias GrovsBoolCompletion = (_ value: Bool) -> Void
 
 /// A manager class responsible for integrating the Grovs SDK into the application.
 class GrovsManager {
@@ -17,6 +17,17 @@ class GrovsManager {
 
     private struct Constants {
         static let deviceIDKey = "linkdsquare_device_id"
+        static let maxQueuedActions = 1000
+    }
+
+    // MARK: - Thread Safety
+
+    /// Asserts that the current code is executing on the main thread.
+    /// GrovsManager is main-thread-only by design: all public entry points
+    /// are dispatched via `Grovs.onMain`, and all API/notification callbacks
+    /// are delivered on the main thread.
+    private func assertMainThread(_ function: StaticString = #function) {
+        assert(Thread.isMainThread, "GrovsManager.\(function) must be called on the main thread")
     }
 
     // MARK: - Properties
@@ -36,6 +47,7 @@ class GrovsManager {
     /// A flag indicating whether the user is authenticated with the Grovs backend.
     private var authenticated = false {
         didSet {
+            authenticationChanged()
             handleActions()
         }
     }
@@ -45,6 +57,9 @@ class GrovsManager {
 
     /// The handler for various events related to Grovs events.
     private let eventsHandler: EventsHandler
+
+    /// Handler for payment events
+    private let paymentEventsHandler: PaymentEventsHandler
 
     /// Stores the payloads received since the startup
     private var receivedPayloads = [[String: Any]]()
@@ -66,7 +81,7 @@ class GrovsManager {
     private var shouldUpdateAttributes = false
 
     /// The delegate for the GrovsManager, allowing customization and handling of Grovs events.
-    var delegate: GrovsDelegate?
+    weak var delegate: GrovsDelegate?
 
     /// The identifier for the current user, normally a userID. This will be visible in the Grovs dashboard.
     var identifier: String? {
@@ -117,14 +132,19 @@ class GrovsManager {
     ///   - apiKey: The API key for authentication with the Grovs backend.
     ///   - useTestEnvironment: If the test environment should be used
     ///   - delegate: The delegate for the GrovsManager.
-    init(apiKey: String, useTestEnvironment: Bool, delegate: GrovsDelegate?) {
+    init(apiKey: String, useTestEnvironment: Bool, baseURL: String? = nil, delegate: GrovsDelegate?) {
         self.apiKey = apiKey
         self.bundleID = AppDetailsHelper.getBundleID()
         self.delegate = delegate
-        self.apiService = APIService(apiKey: apiKey, bundleID: self.bundleID, useTestEnvironment: useTestEnvironment)
+        self.apiService = APIService(apiKey: apiKey, bundleID: self.bundleID, useTestEnvironment: useTestEnvironment, baseURL: baseURL)
         self.eventsHandler = EventsHandler(apiService: self.apiService)
+        self.paymentEventsHandler = PaymentEventsHandler(apiService: self.apiService)
 
         addObservers()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Public Methods
@@ -133,6 +153,7 @@ class GrovsManager {
     ///
     /// - Parameter enabled: A flag indicating whether the SDK should be enabled.
     func setEnabled(_ enabled: Bool) {
+        assertMainThread()
         self.enabled = enabled
         DebugLogger.shared.log(.info, "SDK setEnabled to: \(enabled)")
     }
@@ -188,7 +209,7 @@ class GrovsManager {
             }, failureBlock: {
                 completion(nil)
             })
-            actions.append(action)
+            enqueueAction(action)
 
             return
         }
@@ -232,6 +253,7 @@ class GrovsManager {
     ///
     /// - Parameter completion: A closure that takes a dictionary representing the payload data as its parameter.
     func getLastPayload(completion: @escaping GrovsPayloadClosure) {
+        assertMainThread()
         lastPayloadClosureArray.append(completion)
 
         handlePayloadsReceivedIfNeeded()
@@ -243,6 +265,7 @@ class GrovsManager {
     ///
     /// - Parameter completion: A closure that takes an array of dictionaries, each representing a payload data, as its parameter.
     func getAllPayloadsSinceStartup(completion: @escaping GrovsPayloadsClosure) {
+        assertMainThread()
         payloadsClosureArray.append(completion)
 
         handlePayloadsReceivedIfNeeded()
@@ -252,8 +275,9 @@ class GrovsManager {
     ///
     /// - Parameter completion: A closure called upon completion of authentication, providing a boolean value indicating success.
     func authenticate(completion: @escaping GrovsBoolCompletion) {
+        assertMainThread()
         guard hasURISchemesConfigured() else {
-            DebugLogger.shared.log(.error, "URI schemes are not configured. Deeplinking won't work!")
+            DebugLogger.shared.log(.error, "URI schemes are not configured. SDK won't work!")
             completion(false)
             return
         }
@@ -300,7 +324,7 @@ class GrovsManager {
             }, failureBlock: {
                 completion(nil)
             })
-            actions.append(action)
+            enqueueAction(action)
 
             return
         }
@@ -318,7 +342,7 @@ class GrovsManager {
             }, failureBlock: {
                 completion(nil)
             })
-            actions.append(action)
+            enqueueAction(action)
 
             return
         }
@@ -337,7 +361,7 @@ class GrovsManager {
             }, failureBlock: {
                 completion?()
             })
-            actions.append(action)
+            enqueueAction(action)
 
             return
         }
@@ -369,7 +393,7 @@ class GrovsManager {
             }, failureBlock: {
                 completion(false)
             })
-            actions.append(action)
+            enqueueAction(action)
 
             return
         }
@@ -390,7 +414,7 @@ class GrovsManager {
             }, failureBlock: {
                 completion(nil)
             })
-            actions.append(action)
+            enqueueAction(action)
 
             return
         }
@@ -408,6 +432,18 @@ class GrovsManager {
 
     @objc func applicationWillResignActive() {
         // Implementation for handling application resigning active state, if needed.
+    }
+
+    // MARK: - Internal Methods
+
+    /// Checks if URI schemes are configured in the Info.plist.
+    ///
+    /// - Returns: A Boolean value indicating whether URI schemes are configured.
+    func hasURISchemesConfigured() -> Bool {
+        guard let urlTypes = Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: Any]] else {
+            return false
+        }
+        return !urlTypes.isEmpty
     }
 
     // MARK: - Private Methods
@@ -483,6 +519,7 @@ class GrovsManager {
     }
 
     private func handleURL(url: String) {
+        assertMainThread()
         guard enabled else {
             return
         }
@@ -502,6 +539,7 @@ class GrovsManager {
     }
 
     private func handleReceivedAction(link: String?, payload: [String: Any]?, tracking: [String: Any]?) {
+        assertMainThread()
         if let payload = payload {
             receivedPayloads.append(payload)
         }
@@ -525,15 +563,16 @@ class GrovsManager {
         }
     }
 
-    private func automaticallyDisplayNotifications(notifications: [Notification]) {
+    private func automaticallyDisplayNotifications(notifications: [GrovsNotification]) {
         // Process each notification one by one
-        DispatchQueue.global(qos: .background).async {
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self else { return }
             for notification in notifications {
                 self.notificationsDisplayDispatchGroup.enter()
 
                 // Display each notification sequentially
-                self.displayNotification(notification: notification) {
-                    self.notificationsDisplayDispatchGroup.leave() // Leave the group once the notification is displayed
+                self.displayNotification(notification: notification) { [weak self] in
+                    self?.notificationsDisplayDispatchGroup.leave()
                 }
 
                 self.notificationsDisplayDispatchGroup.wait()
@@ -541,11 +580,15 @@ class GrovsManager {
         }
     }
 
-    private func displayNotification(notification: Notification, completion: @escaping GrovsEmptyClosure) {
+    private func displayNotification(notification: GrovsNotification, completion: @escaping GrovsEmptyClosure) {
         // Ensure that the presentation happens on the main thread
-        DispatchQueue.main.async {
-            if (self.displayedNotificationsIds.first(where: {$0 == notification.id}) != nil) {
-                // Already displayed
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {
+                completion()
+                return
+            }
+
+            if self.displayedNotificationsIds.contains(notification.id) {
                 completion()
                 return
             }
@@ -554,17 +597,31 @@ class GrovsManager {
                 vc.notification = notification
                 vc.manager = self
 
-                // Present the notification view controller on top
-                Presenter.presentOnTop(vc, animated: false) {
-                    self.displayedNotificationsIds.append(notification.id)
-                    // Call the completion handler after the presentation is done
+                Presenter.presentOnTop(vc, animated: false) { [weak self] in
+                    self?.displayedNotificationsIds.append(notification.id)
                     completion()
                 }
             }
         }
     }
 
+    private func authenticationChanged() {
+        if authenticated {
+            paymentEventsHandler.start()
+        }
+    }
+
+    private func enqueueAction(_ action: GrovsAction) {
+        assertMainThread()
+        if actions.count >= Constants.maxQueuedActions {
+            let evicted = actions.removeFirst()
+            evicted.failureBlock()
+        }
+        actions.append(action)
+    }
+
     private func handleActions() {
+        assertMainThread()
         for action in actions {
             if authenticated {
                 action.mainBlock()
@@ -643,16 +700,6 @@ extension GrovsManager {
 
 extension GrovsManager {
 
-    /// Checks if URI schemes are configured in the Info.plist.
-    ///
-    /// - Returns: A Boolean value indicating whether URI schemes are configured.
-    func hasURISchemesConfigured() -> Bool {
-        guard let urlTypes = Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: Any]] else {
-            return false
-        }
-        return !urlTypes.isEmpty
-    }
-
     /// Checks if a specific URI scheme is properly configured in the app's Info.plist.
     ///
     /// - Parameter uriScheme: The URI scheme to check.
@@ -677,5 +724,57 @@ extension GrovsManager {
 
         // Log an error if the URI scheme is not properly configured.
         DebugLogger.shared.log(.error, "There's a mismatch between the URL Scheme in the project and the one from the dashboard, deeplinking won't function properly!")
+    }
+}
+
+// Purchase events
+
+extension GrovsManager {
+    /// Logs an event and sends it to the backend.
+    /// - Parameter event: The event to log
+    func logInAppPurchase(transactionID: UInt64, completion: @escaping GrovsBoolCompletion) {
+        guard authenticated else {
+            let action = GrovsAction(mainBlock: {
+                self.logInAppPurchase(transactionID: transactionID, completion: completion)
+            }, failureBlock: {
+                completion(false)
+            })
+            enqueueAction(action)
+
+            return
+        }
+
+        paymentEventsHandler.logInAppPurchase(transactionID: transactionID, completion: completion)
+    }
+
+    /// Logs a custom purchase transaction and sends it to the backend.
+    ///
+    /// - Parameters:
+    ///   - type: The type of transaction (e.g., purchase, refund).
+    ///   - priceInCents: The price of the transaction in cents.
+    ///   - currency: The currency of the transaction (e.g., "USD").
+    ///   - productID: An product identifier (e.g. "com.acme.weather.consumable.coins.100").
+    ///   - startDate: An optional start date for the transaction. Defaults to the current date if not provided.
+    ///   - completion: A closure that gets called once the transaction is processed.
+    func logCustomPurchase(type: TransactionType, priceInCents: Int, currency: String, productID: String, startDate: Date? = nil, completion: @escaping GrovsBoolCompletion) {
+        guard authenticated else {
+            let action = GrovsAction(mainBlock: {
+                self.logCustomPurchase(
+                    type: type,
+                    priceInCents: priceInCents,
+                    currency: currency,
+                    productID: productID,
+                    startDate: startDate,
+                    completion: completion
+                )
+            }, failureBlock: {
+                completion(false)
+            })
+            enqueueAction(action)
+
+            return
+        }
+
+        paymentEventsHandler.logCustomPurchase(type: type, priceInCents: priceInCents, currency: currency, productID: productID, startDate: startDate, completion: completion)
     }
 }

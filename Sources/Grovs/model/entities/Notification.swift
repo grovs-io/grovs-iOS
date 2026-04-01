@@ -7,7 +7,7 @@
 import Foundation
 
 /// A structure representing a notification.
-struct Notification: Codable {
+struct GrovsNotification: Codable {
     let id: Int                  // Unique identifier for the notification.
     let title: String            // The title of the notification.
     let updatedAt: Date          // The date when the notification was last updated.
@@ -28,7 +28,23 @@ struct Notification: Codable {
     }
 }
 
+extension GrovsNotification {
+    /// Returns a `JSONDecoder` configured with the date format used by the backend.
+    static func backendDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .formatted(Date.backendDateFormatter())
+        return decoder
+    }
+
+    /// Returns a `JSONEncoder` configured with the date format used by the backend.
+    static func backendEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .formatted(Date.backendDateFormatter())
+        return encoder
+    }
+}
+
 /// A structure representing the response containing a list of notifications.
-struct NotificationsResponse: Codable {
-    let notifications: [Notification]  // Array of notifications.
+struct GrovsNotificationsResponse: Codable {
+    let notifications: [GrovsNotification]  // Array of notifications.
 }

@@ -21,7 +21,7 @@ public typealias GrovsPayloadsClosure = (_ array: [[String: Any]]?) -> Void
 typealias GrovsAuthenticationClosure = (_ success: Bool, _ linksquaredID: String?, _ URIScheme: String?, _ identifier: String?, _ attributes: [String: Any]?) -> Void
 
 /// A typealias for a closure that returns an array of notifications.
-typealias GrovsNotificationsClosure = (_ notifications: [Notification]?) -> Void
+typealias GrovsNotificationsClosure = (_ notifications: [GrovsNotification]?) -> Void
 
 /// A typealias for a closure returning an int.
 public typealias GrovsIntClosure = (_ value: Int?) -> Void
@@ -29,15 +29,22 @@ public typealias GrovsIntClosure = (_ value: Int?) -> Void
 /// A typealias for a clsure returning a dictionary
 public typealias GrovsLinkClosure = (_ dictionary: [String: Any]?) -> Void
 
+/// Protocol defining the API service methods used by handlers.
+protocol APIServiceProtocol: AnyObject {
+    func addEvent(event: Event, completion: @escaping GrovsBoolCompletion)
+    func addPaymentEvent(transactionData: TransactionData, completion: @escaping GrovsBoolCompletion)
+}
+
 /// A class responsible for handling API service calls.
-class APIService: BaseService {
+class APIService: BaseService, APIServiceProtocol {
 
     // MARK: - Constants
 
     private struct Constants {
         struct URLs {
-            static let endpoint = "https://sdk.sqd.link/api/v1/sdk"
-//            static let endpoint = "http://sdk.lvh.me:3000/api/v1/sdk"
+            static let baseDomain = "https://sdk.sqd.link"
+            static let apiPath = "/api/v1/sdk"
+            static let endpoint = baseDomain + apiPath
 
             static let authenticate = "/authenticate"
             static let dataForDevice = "/data_for_device"
@@ -50,10 +57,12 @@ class APIService: BaseService {
             static let numberOfUnreadNotifications = "/number_of_unread_notifications"
             static let markNotificationAsRead = "/mark_notification_as_read"
             static let notificationsToDisplayAutomatically = "/notifications_to_display_automatically"
+            static let addPaymentEvent = "/add_payment_event"
             static let linkDetails = "/link_details"
         }
+
         struct Headers {
-            static let SDKVersion = "2.1"
+            static let SDKVersion = "2.3"
 
             static let apiKey = "PROJECT-KEY"
             static let identifier = "IDENTIFIER"
@@ -65,6 +74,7 @@ class APIService: BaseService {
 
     // MARK: - Properties
 
+    private let baseURL: URL
     private let apiKey: String
     private let bundleID: String
     private var accessKey: String {
@@ -91,7 +101,18 @@ class APIService: BaseService {
     /// - Parameters:
     ///   - apiKey: The API key for authentication.
     ///   - bundleID: The bundle ID of the app.
-    init(apiKey: String, bundleID: String, useTestEnvironment: Bool) {
+    init(apiKey: String, bundleID: String, useTestEnvironment: Bool, baseURL: String? = nil) {
+        let endpoint: String
+        if let baseURL = baseURL {
+            let domain = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
+            endpoint = domain + Constants.URLs.apiPath
+        } else {
+            endpoint = Constants.URLs.endpoint
+        }
+        guard let url = URL(string: endpoint) else {
+            preconditionFailure("Invalid API endpoint URL: \(endpoint)")
+        }
+        self.baseURL = url
         self.apiKey = apiKey
         self.bundleID = bundleID
         self.useTestEnvironment = useTestEnvironment
@@ -106,8 +127,11 @@ class APIService: BaseService {
     ///   - url: The URL to retrieve payload for.
     ///   - completion: A closure returning the payload as a dictionary.
     func payloadFor(appDetails: AppDetails, url: String, completion: @escaping GrovsDeviceDataClosureClosure) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.dataForDeviceAndURL)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.dataForDeviceAndURL) else {
+            completion(nil, nil, nil)
+            return
+        }
         request.httpMethod = "POST"
 
         var body = appDetails.toBackend()
@@ -141,8 +165,11 @@ class APIService: BaseService {
     ///   - appDetails: Details of the app.
     ///   - completion: A closure returning the payload as a dictionary.
     func payloadFor(appDetails: AppDetails, completion: @escaping GrovsDeviceDataClosureClosure) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.dataForDevice)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.dataForDevice) else {
+            completion(nil, nil, nil)
+            return
+        }
         request.httpMethod = "POST"
         request.httpBody = appDetails.toBackend().dictToData()
 
@@ -192,7 +219,10 @@ class APIService: BaseService {
                       trackingMedium: String? = nil,
                       completion: @escaping GrovsURLClosure) {
 
-        var request = urlRequestWithAuthHeaders(path: Constants.URLs.generateLink)
+        guard var request = urlRequestWithAuthHeaders(path: Constants.URLs.generateLink) else {
+            completion(nil)
+            return
+        }
         request.httpMethod = "POST"
         let body = ["title": title,
                     "subtitle": subtitle,
@@ -206,7 +236,7 @@ class APIService: BaseService {
                     "show_preview_android": showPreviewAndroid,
                     "tracking_campaign": trackingCampaign,
                     "tracking_source": trackingSource,
-                    "tracking_medium": trackingMedium] as [String : Any?]
+                    "tracking_medium": trackingMedium] as [String: Any?]
         request.httpBody = body.dictToData()
 
         DebugLogger.shared.log(.info, "Generating link")
@@ -228,8 +258,11 @@ class APIService: BaseService {
     ///   - appDetails: Details of the app.
     ///   - completion: A closure returning the Linksquared ID as a string.
     func authenticate(appDetails: AppDetails, completion: @escaping GrovsAuthenticationClosure) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.authenticate)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.authenticate) else {
+            completion(false, nil, nil, nil, nil)
+            return
+        }
         request.httpMethod = "POST"
         request.httpBody = appDetails.toBackend().dictToData()
 
@@ -258,19 +291,22 @@ class APIService: BaseService {
     ///   - event: The event to add.
     ///   - completion: A closure indicating the success or failure of the operation.
     func addEvent(event: Event, completion: @escaping GrovsBoolCompletion) {
-        var request = urlRequestWithAuthHeaders(path: Constants.URLs.event)
+        guard var request = urlRequestWithAuthHeaders(path: Constants.URLs.event) else {
+            completion(false)
+            return
+        }
         request.httpMethod = "POST"
         request.httpBody = event.toBackend().dictToData()
 
-        DebugLogger.shared.log(.info, "Add event")
+        DebugLogger.shared.log(.info, "Add event - \(event.type.rawValue)")
         makeRequest(URLRequest: request) { success, json in
             guard json != nil, success else {
-                DebugLogger.shared.log(.info, "Add event - Failed")
+                DebugLogger.shared.log(.info, "Add event - Failed - \(event.type.rawValue)")
                 completion(false)
                 return
             }
 
-            DebugLogger.shared.log(.info, "Add event - Successful")
+            DebugLogger.shared.log(.info, "Add event - Successful - \(event.type.rawValue)")
             completion(true)
         }
     }
@@ -280,7 +316,10 @@ class APIService: BaseService {
     /// - Parameter completion: A closure indicating the success or failure of the operation.
 
     func updateAttributes(completion: @escaping GrovsBoolCompletion) {
-        var request = urlRequestWithAuthHeaders(path: Constants.URLs.attributes)
+        guard var request = urlRequestWithAuthHeaders(path: Constants.URLs.attributes) else {
+            completion(false)
+            return
+        }
         request.httpMethod = "POST"
         let body = ["sdk_identifier": Context.identifier as Any,
                     "sdk_attributes": Context.attributes as Any,
@@ -307,8 +346,11 @@ class APIService: BaseService {
     ///   - completion: A closure returning an array of notifications.
 
     func notifications(page: Int, completion: @escaping GrovsNotificationsClosure) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.notifications)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.notifications) else {
+            completion(nil)
+            return
+        }
         request.httpMethod = "POST"
         request.httpBody = ["page": page].dictToData()
 
@@ -321,13 +363,8 @@ class APIService: BaseService {
             }
 
             do {
-                let dateFormatter = DateFormatter()
-                dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-                dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .formatted(dateFormatter)
-                let response = try decoder.decode(NotificationsResponse.self, from: jsonData)
+                let response = try GrovsNotification.backendDecoder()
+                    .decode(GrovsNotificationsResponse.self, from: jsonData)
 
                 DebugLogger.shared.log(.info, "Get messages - Successful")
                 completion(response.notifications)
@@ -342,8 +379,11 @@ class APIService: BaseService {
     ///
     /// - Parameter completion: A closure returning the number of unread notifications.
     func numberOfUnreadNotifications(completion: @escaping GrovsIntClosure) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.numberOfUnreadNotifications)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.numberOfUnreadNotifications) else {
+            completion(nil)
+            return
+        }
         request.httpMethod = "GET"
 
         DebugLogger.shared.log(.info, "Get unread messages")
@@ -365,8 +405,11 @@ class APIService: BaseService {
     ///   - notificationID: The ID of the notification to mark as read.
     ///   - completion: A closure indicating the success or failure of the operation.
     func markNotificationAsRead(notificationID: Int, completion: @escaping GrovsBoolCompletion) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.markNotificationAsRead)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.markNotificationAsRead) else {
+            completion(false)
+            return
+        }
         request.httpMethod = "POST"
         request.httpBody = ["id": notificationID].dictToData()
 
@@ -387,8 +430,11 @@ class APIService: BaseService {
     ///
     /// - Parameter completion: A closure returning an array of notifications that should be displayed automatically.
     func notificationsToDisplayAutomatically(completion: @escaping GrovsNotificationsClosure) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.notificationsToDisplayAutomatically)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.notificationsToDisplayAutomatically) else {
+            completion(nil)
+            return
+        }
         request.httpMethod = "GET"
 
         DebugLogger.shared.log(.info, "Notifications to display automatically")
@@ -400,13 +446,8 @@ class APIService: BaseService {
             }
 
             do {
-                let dateFormatter = DateFormatter()
-                dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-                dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .formatted(dateFormatter)
-                let response = try decoder.decode(NotificationsResponse.self, from: jsonData)
+                let response = try GrovsNotification.backendDecoder()
+                    .decode(GrovsNotificationsResponse.self, from: jsonData)
 
                 DebugLogger.shared.log(.info, "Notifications to display automatically - Successful")
                 completion(response.notifications)
@@ -417,6 +458,27 @@ class APIService: BaseService {
         }
     }
 
+    func addPaymentEvent(transactionData: TransactionData, completion: @escaping GrovsBoolCompletion) {
+        guard var request = urlRequestWithAuthHeaders(path: Constants.URLs.addPaymentEvent) else {
+            completion(false)
+            return
+        }
+        request.httpMethod = "POST"
+        request.httpBody = transactionData.toData().dictToData()
+
+        DebugLogger.shared.log(.info, "Add payment event")
+        makeRequest(URLRequest: request) { success, json in
+            guard success else {
+                DebugLogger.shared.log(.error, "Add payment event - Failed")
+                completion(false)
+                return
+            }
+
+            DebugLogger.shared.log(.info, "Add payment event - Success")
+            completion(true)
+        }
+    }
+
     /// Fetches details for a Grovs link generated by the SDK in the current environment.
     ///
     /// - Parameter path:
@@ -424,8 +486,11 @@ class APIService: BaseService {
     /// - Parameter completion:
     ///   A closure that is called with a dictionary of link details on success, or `nil` if the request fails.
     func linkDetails(path: String, completion: @escaping GrovsLinkClosure) {
-        var request = urlRequestWithAuthHeaders(
-            path: Constants.URLs.linkDetails)
+        guard var request = urlRequestWithAuthHeaders(
+            path: Constants.URLs.linkDetails) else {
+            completion(nil)
+            return
+        }
         request.httpMethod = "POST"
         request.httpBody = ["path": path].dictToData()
 
@@ -449,7 +514,7 @@ class APIService: BaseService {
             let jsonData = try JSONSerialization.data(withJSONObject: dict, options: [])
             return jsonData
         } catch {
-            print("Error serializing JSON: \(error)")
+            DebugLogger.shared.log(.error, "Error serializing JSON: \(error)")
             return nil
         }
     }
@@ -457,10 +522,12 @@ class APIService: BaseService {
     /// Constructs a URLRequest with authentication headers.
     ///
     /// - Parameter path: The path to append to the base URL.
-    /// - Returns: A URLRequest object with authentication headers set.
-    private func urlRequestWithAuthHeaders(path: String) -> URLRequest {
-        let endpoint = Constants.URLs.endpoint + path
-        let url = URL(string: endpoint)!
+    /// - Returns: A URLRequest object with authentication headers set, or nil if the URL is invalid.
+    private func urlRequestWithAuthHeaders(path: String) -> URLRequest? {
+        guard let url = URL(string: baseURL.absoluteString + path) else {
+            DebugLogger.shared.log(.error, "Invalid API URL path: \(path)")
+            return nil
+        }
 
         var request = URLRequest(url: url)
         request.setValue(accessKey, forHTTPHeaderField: Constants.Headers.apiKey)

@@ -13,11 +13,15 @@ class DismissalDelegate: NSObject, UIAdaptivePresentationControllerDelegate {
 
     // This method will be called when the presented view controller is dismissed
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        completion?() // Call the completion closure if it exists
+        let block = completion
+        completion = nil
+        block?()
     }
 
     func viewControllerDidDismiss() {
-        completion?()
+        let block = completion
+        completion = nil
+        block?()
     }
 }
 
@@ -72,20 +76,19 @@ class Presenter {
         return topController
     }
 
-    /// Retrieves the app's key window. Supports both older and newer iOS versions, even if scenes are not used on iOS 13+.
+    /// Retrieves the app's key window.
     /// - Returns: The key window in the application.
-    private static func getKeyWindow() -> UIWindow? {
-        if #available(iOS 13, *) {
-            // Check if the app uses scenes or not
-            if let windowScene = UIApplication.shared.connectedScenes
-                .filter({ $0.activationState == .foregroundActive })
-                .compactMap({ $0 as? UIWindowScene })
-                .first {
-                return windowScene.windows.first { $0.isKeyWindow }
-            }
+    static func getKeyWindow() -> UIWindow? {
+        if #available(iOS 15, *) {
+            return UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .filter { $0.activationState == .foregroundActive }
+                .first?.keyWindow
         }
 
-        // For iOS versions before 13, or if the app does not use scenes on iOS 13+
-        return UIApplication.shared.keyWindow
+        return UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+            .first?.windows.first { $0.isKeyWindow }
     }
 }

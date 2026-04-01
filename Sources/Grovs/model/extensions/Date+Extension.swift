@@ -7,6 +7,25 @@
 import Foundation
 
 extension Date {
+
+    // MARK: - Cached formatters
+
+    private static let _backendDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+        return formatter
+    }()
+
+    private static let _dateOnlyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    // MARK: - Epoch helpers
+
     /// Converts a `Date` object to seconds since the Unix epoch.
     ///
     /// - Returns: The number of seconds since the Unix epoch (January 1, 1970, 00:00:00 UTC).
@@ -33,34 +52,25 @@ extension Date {
         return components.day
     }
 
-    /// Parses a string representing a date in the format "YYYY-MM-dd" and returns the corresponding `Date` object.
+    /// Parses a string representing a date in the format "yyyy-MM-dd" and returns the corresponding `Date` object.
     ///
     /// - Parameter string: The string representing the date.
     /// - Returns: A `Date` object representing the date parsed from the string, or nil if parsing fails.
     static func dateOnlyFromBackend(string: String) -> Date? {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .none
-        dateFormatter.dateFormat = "YYYY-MM-dd"
-
-        return dateFormatter.date(from: string)
+        return _dateOnlyFormatter.date(from: string)
     }
 
     /// Returns a string representation of the date formatted for backend communication.
     ///
     /// - Returns: A string representation of the date formatted for backend communication.
     func backendDateString() -> String {
-        let dateFormatter = Date.backendDateFormatter()
-        return dateFormatter.string(from: self)
+        return Date._backendDateFormatter.string(from: self)
     }
 
     /// Returns a date formatter configured for backend communication.
     ///
     /// - Returns: A `DateFormatter` instance configured with the appropriate date format for backend communication.
     static func backendDateFormatter() -> DateFormatter {
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX") // set locale to reliable US_POSIX
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-        return dateFormatter
+        return _backendDateFormatter
     }
 }

@@ -17,7 +17,7 @@ extension Dictionary {
 
             return jsonData
         } catch {
-            print(error.localizedDescription)
+            DebugLogger.shared.log(.error, "Error converting dictionary to data: \(error.localizedDescription)")
         }
 
         return nil
@@ -35,7 +35,7 @@ extension Dictionary {
                 return ""
             }
         } catch {
-            print("Error converting dictionary to string: \(error)")
+            DebugLogger.shared.log(.error, "Error converting dictionary to string: \(error)")
             return ""
         }
     }

@@ -7,7 +7,7 @@
 import Foundation
 
 /// An enumeration representing different types of events.
-enum EventType: String, Codable {
+enum EventType: String {
     case appOpen = "app_open"
     case view = "view"
     case open = "open"
@@ -18,9 +18,14 @@ enum EventType: String, Codable {
 }
 
 /// A class representing an event with type, creation date, link, and engagement time.
-class Event: NSObject, NSCoding, Codable {
+class Event: NSObject, NSSecureCoding {
+
+    static var supportsSecureCoding: Bool { true }
 
     // MARK: - Properties
+
+    /// Unique identifier for this event.
+    let id: UUID
 
     /// The type of the event.
     let type: EventType
@@ -44,6 +49,7 @@ class Event: NSObject, NSCoding, Codable {
     ///   - link: The link associated with the event. Default is nil.
     ///   - engagementTime: The engagement time associated with the event. Default is nil.
     init(type: EventType, createdAt: Date, link: String? = nil, engagementTime: Int? = nil) {
+        self.id = UUID()
         self.type = type
         self.createdAt = createdAt
         self.link = link
@@ -53,6 +59,7 @@ class Event: NSObject, NSCoding, Codable {
     // MARK: - NSCoding
 
     func encode(with coder: NSCoder) {
+        coder.encode(id.uuidString, forKey: "id")
         coder.encode(type.rawValue, forKey: "type")
         coder.encode(createdAt, forKey: "createdAt")
         coder.encode(link, forKey: "link")
@@ -60,17 +67,24 @@ class Event: NSObject, NSCoding, Codable {
     }
 
     required init?(coder: NSCoder) {
-        guard let typeRawValue = coder.decodeObject(forKey: "type") as? String,
+        guard let typeRawValue = coder.decodeObject(of: NSString.self, forKey: "type") as String?,
               let type = EventType(rawValue: typeRawValue),
-              let createdAt = coder.decodeObject(forKey: "createdAt") as? Date
+              let createdAt = coder.decodeObject(of: NSDate.self, forKey: "createdAt") as Date?
         else {
             return nil
         }
 
+        // Backwards compatible: generate a new UUID if none was persisted
+        if let idString = coder.decodeObject(of: NSString.self, forKey: "id") as String?,
+           let id = UUID(uuidString: idString) {
+            self.id = id
+        } else {
+            self.id = UUID()
+        }
         self.type = type
         self.createdAt = createdAt
-        self.link = coder.decodeObject(forKey: "link") as? String
-        self.engagementTime = coder.decodeObject(forKey: "engagementTime") as? Int
+        self.link = coder.decodeObject(of: NSString.self, forKey: "link") as String?
+        self.engagementTime = coder.decodeObject(of: NSNumber.self, forKey: "engagementTime") as? Int
     }
 
     // MARK: - Backend Conversion

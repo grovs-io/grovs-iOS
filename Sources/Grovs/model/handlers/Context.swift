@@ -7,14 +7,23 @@
 import Foundation
 
 struct Context {
-    // Computed property to get and set the linksquared ID from the Keychain
+
+    private static let lock = NSLock()
+
+    // MARK: - Backing storage
+
+    private static var _identifier: String?
+    private static var _attributes: [String: Any]?
+    private static var _userAgent: String?
+    private static var _pushToken: String?
+
+    // MARK: - Keychain-backed (thread-safe at the OS level)
+
     static var linksquaredID: String? {
         get {
-            // Retrieves the value from the Keychain
             return KeychainHelper.getValue(forKey: .linksquaredID)
         }
         set {
-            // Sets or removes the value in the Keychain based on the new value
             if let newValue = newValue {
                 KeychainHelper.setValue(newValue, forKey: .linksquaredID)
             } else {
@@ -23,15 +32,67 @@ struct Context {
         }
     }
 
-    /// The identifier for the current context, used for tracking and identification.
-    static var identifier: String?
+    // MARK: - Synchronized properties
 
-    /// Attributes associated with the current context, used for providing additional context.
-    static var attributes: [String: Any]?
+    static var identifier: String? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _identifier
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _identifier = newValue
+        }
+    }
 
-    /// The user agent string, used for identifying the client environment.
-    static var userAgent: String?
+    static var attributes: [String: Any]? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _attributes
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _attributes = newValue
+        }
+    }
 
-    /// A property representing the push notification token.
-    static var pushToken: String?
+    static var userAgent: String? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _userAgent
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _userAgent = newValue
+        }
+    }
+
+    static var pushToken: String? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _pushToken
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _pushToken = newValue
+        }
+    }
+
+    /// Resets all static state. Used by tests to prevent cross-test contamination.
+    static func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        _identifier = nil
+        _attributes = nil
+        _userAgent = nil
+        _pushToken = nil
+    }
 }

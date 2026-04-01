@@ -30,10 +30,10 @@ class MessagesViewController: UIViewController, UITableViewDataSource, UITableVi
         static let cellIdentifier = "MessageTableViewCell"  // Identifier for the message table view cell.
     }
 
-    var manager: GrovsManager?  // The manager responsible for fetching notifications.
+    weak var manager: GrovsManager?  // The manager responsible for fetching notifications.
     var dismissalDelegate: DismissalDelegate?
 
-    private var notifications = [Notification]() {  // Array of notifications to be displayed.
+    private var notifications = [GrovsNotification]() {  // Array of notifications to be displayed.
         didSet {
             tableView.reloadData()
         }
@@ -46,6 +46,8 @@ class MessagesViewController: UIViewController, UITableViewDataSource, UITableVi
     private let refreshControl = UIRefreshControl()  // Pull-to-refresh control.
 
     // MARK: - Lifecycle
+
+    @IBOutlet weak var closeButton: UIButton!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -61,6 +63,7 @@ class MessagesViewController: UIViewController, UITableViewDataSource, UITableVi
         tableView.delegate = self
 
         setupRefreshControl()
+        configureAccessibility()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -79,6 +82,15 @@ class MessagesViewController: UIViewController, UITableViewDataSource, UITableVi
 
         // Notify the delegate when the view is dismissed
         dismissalDelegate?.viewControllerDidDismiss()
+    }
+
+    // MARK: - Accessibility
+
+    private func configureAccessibility() {
+        closeButton?.accessibilityLabel = "Close"
+        closeButton?.accessibilityTraits = .button
+        activityIndicator.accessibilityLabel = "Loading messages"
+        tableView.accessibilityIdentifier = "MessagesTableView"
     }
 
     // MARK: - Setup Pull-to-Refresh
@@ -104,11 +116,12 @@ class MessagesViewController: UIViewController, UITableViewDataSource, UITableVi
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellIdentifier, for: indexPath) as! MessageTableViewCell
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellIdentifier, for: indexPath) as? MessageTableViewCell else {
+            return UITableViewCell()
+        }
 
         let notif = notifications[indexPath.row]
 
-        // Configure the cell with notification data.
         cell.messageTitleLabel.text = notif.title
         cell.messageSubtitleLabel.text = notif.subtitle
         cell.newMessageIndicatorView.isHidden = notif.read
@@ -161,7 +174,7 @@ class MessagesViewController: UIViewController, UITableViewDataSource, UITableVi
     /// Navigates to the message details view controller.
     ///
     /// - Parameter notification: The selected notification.
-    private func goToMessage(notification: Notification) {
+    private func goToMessage(notification: GrovsNotification) {
         if let vc = MessageDetailsViewController.loadVCFromNib() {
             vc.notification = notification
             vc.manager = manager

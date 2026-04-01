@@ -32,7 +32,13 @@ class AppDetailsHelper {
 
         let device = UIDevice.modelName
 
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds: CGRect
+        if let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+            screenBounds = scene.screen.bounds
+        } else {
+            screenBounds = UIScreen.main.bounds
+        }
         let screenWidth = Int(max(screenBounds.width, screenBounds.height))
         let screenHeight = Int(min(screenBounds.width, screenBounds.height))
 

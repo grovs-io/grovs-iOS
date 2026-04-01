@@ -7,6 +7,10 @@
 import Foundation
 import Security
 
+/// Protocol for keychain read operations used by handlers.
+protocol KeychainHelperProtocol {
+    func getValue(forKey key: KeychainKeys) -> String?
+}
 
 /// An enumeration defining keys used for storing values in the keychain.
 enum KeychainKeys: String {
@@ -30,7 +34,8 @@ class KeychainHelper {
             let query: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrAccount as String: key.rawValue,
-                kSecValueData as String: data
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
             ]
 
             SecItemDelete(query as CFDictionary)
@@ -81,5 +86,11 @@ class KeychainHelper {
 
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess
+    }
+}
+
+extension KeychainHelper: KeychainHelperProtocol {
+    func getValue(forKey key: KeychainKeys) -> String? {
+        KeychainHelper.getValue(forKey: key)
     }
 }

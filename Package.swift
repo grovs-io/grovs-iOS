@@ -18,7 +18,12 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "Grovs"),
+            name: "Grovs",
+            resources: [
+                .process("controllers/MessagesViewController.xib"),
+                .process("controllers/MessageDetailsViewController.xib"),
+                .process("view/MessageTableViewCell.xib"),
+            ]),
         .testTarget(
             name: "grovs-iosTests",
             dependencies: ["Grovs"]),

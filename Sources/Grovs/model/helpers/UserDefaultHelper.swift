@@ -5,6 +5,13 @@
 //
 
 import Foundation
+
+/// Protocol for UserDefaults integer operations used by handlers.
+protocol UserDefaultsHelperProtocol {
+    func getInt(key: UserDefaultsKeys) -> Int
+    func setInt(value: Int, key: UserDefaultsKeys)
+}
+
 /// An enumeration defining keys used for storing values in UserDefaults.
 enum UserDefaultsKeys: String {
     case grovsNumberOfOpens
@@ -30,7 +37,7 @@ class UserDefaultsHelper: NSObject {
     ///   - key: The key under which to store the value.
     static func set(string: String, key: UserDefaultsKeys) {
         userDefaultsGroup.setValue(string, forKey: key.rawValue)
-        userDefaultsGroup.synchronize()
+
     }
 
     /// Retrieves a string value from UserDefaults for the specified key.
@@ -50,7 +57,7 @@ class UserDefaultsHelper: NSObject {
     ///   - key: The key under which to store the value.
     static func set(boolean: Bool, key: UserDefaultsKeys) {
         userDefaultsGroup.set(boolean, forKey: key.rawValue)
-        userDefaultsGroup.synchronize()
+
     }
 
     /// Retrieves a boolean value from UserDefaults for the specified key.
@@ -70,7 +77,7 @@ class UserDefaultsHelper: NSObject {
     ///   - key: The key under which to store the value.
     static func set(value: Int, key: UserDefaultsKeys) {
         userDefaultsGroup.set(value, forKey: key.rawValue)
-        userDefaultsGroup.synchronize()
+
     }
 
     /// Retrieves an integer value from UserDefaults for the specified key.
@@ -90,7 +97,7 @@ class UserDefaultsHelper: NSObject {
     ///   - key: The key under which to store the value.
     static func set(array: [String], key: UserDefaultsKeys) {
         userDefaultsGroup.setValue(array, forKey: key.rawValue)
-        userDefaultsGroup.synchronize()
+
     }
 
     /// Retrieves an array of strings from UserDefaults for the specified key.
@@ -116,6 +123,16 @@ class UserDefaultsHelper: NSObject {
     /// - Parameter key: The key for which to remove the stored value.
     static func remove(key: UserDefaultsKeys) {
         userDefaultsGroup.removeObject(forKey: key.rawValue)
-        userDefaultsGroup.synchronize()
+
+    }
+}
+
+extension UserDefaultsHelper: UserDefaultsHelperProtocol {
+    func getInt(key: UserDefaultsKeys) -> Int {
+        UserDefaultsHelper.getInt(key: key)
+    }
+
+    func setInt(value: Int, key: UserDefaultsKeys) {
+        UserDefaultsHelper.set(value: value, key: key)
     }
 }

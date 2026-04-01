@@ -27,8 +27,8 @@ class MessageDetailsViewController: UIViewController, WKNavigationDelegate, WKUI
     @IBOutlet weak var backButton: UIButton!                      // Back button for navigation.
     @IBOutlet weak var closeButton: UIButton!                     // Close button for dismissing the view.
 
-    var notification: Notification?  // The notification to display.
-    var manager: GrovsManager? // The manager responsible for marking the notification as read.
+    var notification: GrovsNotification?  // The notification to display.
+    weak var manager: GrovsManager? // The manager responsible for marking the notification as read.
     var dismissalDelegate: DismissalDelegate?
 
     // MARK: - Lifecycle
@@ -38,6 +38,7 @@ class MessageDetailsViewController: UIViewController, WKNavigationDelegate, WKUI
 
         // Configure activity indicator color.
         activityIndicator.tintColor = UIColor.systemGray
+        configureAccessibility()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -67,6 +68,7 @@ class MessageDetailsViewController: UIViewController, WKNavigationDelegate, WKUI
         }
 
         guard let url = URL(string: urlString) else {
+            exitScreen()
             return
         }
 
@@ -100,7 +102,7 @@ class MessageDetailsViewController: UIViewController, WKNavigationDelegate, WKUI
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         // Called when the web view fails to load content.
         stopLoading()
-        print("Failed to load page: \(error.localizedDescription)")
+        DebugLogger.shared.log(.error, "Failed to load page: \(error.localizedDescription)")
     }
 
     // MARK: - Navigation UI delegate
@@ -114,6 +116,17 @@ class MessageDetailsViewController: UIViewController, WKNavigationDelegate, WKUI
         }
         
         return nil
+    }
+
+    // MARK: - Accessibility
+
+    private func configureAccessibility() {
+        backButton.accessibilityLabel = "Back"
+        backButton.accessibilityTraits = .button
+        closeButton.accessibilityLabel = "Close"
+        closeButton.accessibilityTraits = .button
+        activityIndicator.accessibilityLabel = "Loading content"
+        webView.accessibilityIdentifier = "MessageContentWebView"
     }
 
     // MARK: - Actions
@@ -144,7 +157,7 @@ class MessageDetailsViewController: UIViewController, WKNavigationDelegate, WKUI
         guard let notification else { return }
 
         manager?.markNotificationAsRead(notificationID: notification.id, completion: { _ in
-            print("Notification marked as read")
+            DebugLogger.shared.log(.info, "Notification marked as read")
         })
     }
 

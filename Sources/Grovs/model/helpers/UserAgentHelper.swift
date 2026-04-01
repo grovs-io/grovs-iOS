@@ -35,34 +35,33 @@ class WebViewNavigationDelegate: NSObject, WKNavigationDelegate {
 /// A utility class for retrieving the Safari user agent string.
 class UserAgentHelper {
 
-    // Shared WKWebView instance used to retrieve the user agent string.
-    private static let webView = WKWebView(frame: .zero)
-
-    // Delegate to handle web view navigation events.
-    private static var delegate: WebViewNavigationDelegate!
+    // Held alive only during the async user-agent fetch, then released.
+    private static var activeWebView: WKWebView?
+    private static var activeDelegate: WebViewNavigationDelegate?
 
     /// Retrieves the Safari user agent string by loading a minimal HTML page in a WKWebView.
     ///
     /// - Parameter completion: A closure to be called with the user agent string or nil if retrieval fails.
     static func getSafariUserAgent(completion: @escaping (String?) -> Void) {
-        // Load a minimal HTML page to initialize the WebView.
+        let webView = WKWebView(frame: .zero)
+        activeWebView = webView
+
         webView.loadHTMLString("<html></html>", baseURL: nil)
 
-        // Initialize the delegate and assign it to the WebView's navigation delegate.
-        delegate = WebViewNavigationDelegate {
-            // Evaluate JavaScript to get the user agent string.
+        let delegate = WebViewNavigationDelegate {
             webView.evaluateJavaScript("navigator.userAgent") { result, error in
+                activeWebView = nil
+                activeDelegate = nil
+
                 if let userAgent = result as? String {
-                    // Pass the user agent string to the completion handler.
                     completion(userAgent)
                 } else {
-                    // Pass nil if an error occurred.
                     completion(nil)
                 }
             }
         }
 
-        // Assign the delegate to handle navigation events.
+        activeDelegate = delegate
         webView.navigationDelegate = delegate
     }
 }

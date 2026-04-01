@@ -9,8 +9,18 @@ import Foundation
 /// A typealias for the closure used to handle events.
 typealias GrovsEventsClosure = (_ events: [Event]?) -> Void
 
+/// Protocol defining the events storage interface.
+protocol EventsStorageProtocol {
+    func addEvent(event: Event, completion: @escaping GrovsEmptyClosure)
+    func addOrReplaceEvents(events: [Event], completion: @escaping GrovsEmptyClosure)
+    func removeEvent(event: Event, completion: @escaping GrovsEmptyClosure)
+    func getEvents(completion: @escaping GrovsEventsClosure)
+    func transformEvents(_ transform: @escaping (Event) -> Event, completion: @escaping GrovsEmptyClosure)
+    func removeDuplicateEventsIfNeeded(events: [Event]) -> [Event]
+}
+
 /// A class responsible for storing and managing events.
-class EventsStorage {
+class EventsStorage: EventsStorageProtocol {
 
     // MARK: - Constants
 
@@ -21,7 +31,11 @@ class EventsStorage {
     // MARK: - Properties
 
     /// The data cache instance used for storing events.
-    private let dataCache = DataCache(name: "grovs-events-cache")
+    /// Uses Application Support (not Caches) so iOS does not purge unsent events under storage pressure.
+    private let dataCache: DataCache = {
+        let appSupport = NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true).first!
+        return DataCache(name: "grovs-events-cache", path: appSupport)
+    }()
 
     /// A serial dispatch queue for managing access to shared resources.
     private let serialQueue = DispatchQueue(label: "com.grovs-events-queue", qos: .background)
@@ -42,14 +56,14 @@ class EventsStorage {
             existingEvents = self.removeDuplicateEventsIfNeeded(events: existingEvents)
 
             for sourceEvent in events {
-                if let existingIndex = existingEvents.firstIndex(where: { $0.createdAt == sourceEvent.createdAt }) {
+                if let existingIndex = existingEvents.firstIndex(where: { $0.id == sourceEvent.id }) {
                     existingEvents[existingIndex] = sourceEvent
                 } else {
                     existingEvents.append(sourceEvent)
                 }
             }
 
-            self.dataCache.write(array: existingEvents, forKey: Constants.cachedEvents)
+            self.dataCache.writeSync(array: existingEvents, forKey: Constants.cachedEvents)
 
             DispatchQueue.global(qos: .background).async {
                 completion()
@@ -71,7 +85,7 @@ class EventsStorage {
             events.append(event)
             let existingEvents = self.removeDuplicateEventsIfNeeded(events: events)
 
-            self.dataCache.write(array: existingEvents, forKey: Constants.cachedEvents)
+            self.dataCache.writeSync(array: existingEvents, forKey: Constants.cachedEvents)
 
             DispatchQueue.global(qos: .background).async {
                 completion()
@@ -85,10 +99,33 @@ class EventsStorage {
     func removeEvent(event: Event, completion: @escaping GrovsEmptyClosure) {
         serialQueue.async {
             if var readEvents = self.dataCache.readArray(forKey: Constants.cachedEvents) as? [Event] {
-                readEvents.removeAll(where: { $0.createdAt == event.createdAt })
+                readEvents.removeAll(where: { $0.id == event.id })
 
-                self.dataCache.write(array: readEvents, forKey: Constants.cachedEvents)
+                self.dataCache.writeSync(array: readEvents, forKey: Constants.cachedEvents)
             }
+
+            DispatchQueue.global(qos: .background).async {
+                completion()
+            }
+        }
+    }
+
+    /// Atomically reads all events, applies a transform to each, and writes them back.
+    /// The entire read-modify-write runs in a single serial queue block, preventing
+    /// interleaved removes from resurrecting deleted events.
+    ///
+    /// - Parameters:
+    ///   - transform: A closure applied to each event. Return the (possibly modified) event.
+    ///   - completion: Called after the transformed events have been persisted.
+    func transformEvents(_ transform: @escaping (Event) -> Event, completion: @escaping GrovsEmptyClosure) {
+        serialQueue.async {
+            guard let events = self.dataCache.readArray(forKey: Constants.cachedEvents) as? [Event] else {
+                DispatchQueue.global(qos: .background).async { completion() }
+                return
+            }
+
+            let transformed = events.map(transform)
+            self.dataCache.writeSync(array: transformed, forKey: Constants.cachedEvents)
 
             DispatchQueue.global(qos: .background).async {
                 completion()

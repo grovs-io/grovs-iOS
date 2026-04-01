@@ -1,12 +1,12 @@
 Pod::Spec.new do |s|
   s.name         = 'Grovs'
-  s.version      = '2.2'
+  s.version      = '2.3'
   s.summary      = 'Grovs is a powerful SDK that enables deep linking and universal linking within your iOS applications.'
   s.homepage     = 'https://grovs.io'
   s.license      = { :type => 'MIT', :file => 'LICENSE' }
   s.author       = { 'Grovs' => 'support@grovs.io' }
   s.source       = { :git => 'https://github.com/grovs-io/grovs-iOS.git', :tag => s.version.to_s }
-  s.swift_version = '5.0'
+  s.swift_version = '5.9'
   s.module_name  = 'Grovs' 
 
   s.resources = 'Sources/**/*.{xib}'
@@ -14,5 +14,4 @@ Pod::Spec.new do |s|
 
   s.platform     = :ios
   s.ios.deployment_target = "13.0"
-  s.swift_version = '5.0'
 end

@@ -78,7 +78,7 @@ class AlertHelper {
 
     /// Dismisses all currently presented alerts.
     static func dismissAllNotifications() {
-        guard let rootViewController = UIApplication.shared.keyWindow?.rootViewController else {
+        guard let rootViewController = Presenter.getKeyWindow()?.rootViewController else {
             return
         }
 
