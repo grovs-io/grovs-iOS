@@ -6,6 +6,15 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/grovs-io/grovs-iOS/releases"><img src="https://img.shields.io/github/v/release/grovs-io/grovs-iOS?style=flat-square&color=4F46E5" alt="Latest release"/></a>
+  <a href="https://swiftpackageindex.com/grovs-io/grovs-iOS"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fgrovs-io%2Fgrovs-iOS%2Fbadge%3Ftype%3Dswift-versions" alt="Swift versions"/></a>
+  <a href="https://swiftpackageindex.com/grovs-io/grovs-iOS"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fgrovs-io%2Fgrovs-iOS%2Fbadge%3Ftype%3Dplatforms" alt="Platforms"/></a>
+  <a href="https://cocoapods.org/pods/Grovs"><img src="https://img.shields.io/cocoapods/v/Grovs.svg?style=flat-square&color=4F46E5" alt="CocoaPods"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/grovs-io/grovs-iOS?style=flat-square&color=4F46E5" alt="MIT License"/></a>
+  <a href="https://github.com/grovs-io/grovs-iOS/stargazers"><img src="https://img.shields.io/github/stars/grovs-io/grovs-iOS?style=flat-square&color=4F46E5" alt="GitHub stars"/></a>
+</p>
+
+<p align="center">
   Deep linking, attribution, and smart links for iOS.<br/>
   Part of the <a href="https://github.com/grovs-io">Grovs</a> open-source mobile linking platform.
 </p>
